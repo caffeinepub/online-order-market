@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Playfair Display';
+  src: url('/assets/fonts/PlayfairDisplay.woff2') format('woff2');
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  src: url('/assets/fonts/PlusJakartaSans.woff2') format('woff2');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+
+    /* Warm amber/market palette */
+    --background: 0.97 0.012 75;
+    --foreground: 0.18 0.04 50;
+
+    --card: 0.99 0.006 80;
+    --card-foreground: 0.18 0.04 50;
+
+    --popover: 0.99 0.006 80;
+    --popover-foreground: 0.18 0.04 50;
+
+    --primary: 0.52 0.16 50;
+    --primary-foreground: 0.99 0.005 80;
+
+    --secondary: 0.93 0.03 75;
+    --secondary-foreground: 0.3 0.07 50;
+
+    --muted: 0.94 0.018 75;
+    --muted-foreground: 0.52 0.04 60;
+
+    --accent: 0.72 0.15 55;
+    --accent-foreground: 0.12 0.03 50;
+
+    --destructive: 0.577 0.245 27.325;
+    --destructive-foreground: 0.985 0 0;
+
+    --border: 0.88 0.03 72;
+    --input: 0.88 0.03 72;
+    --ring: 0.52 0.16 50;
+
+    --success: 0.62 0.15 145;
+    --success-foreground: 0.99 0 0;
+
+    --market-warm: 0.78 0.12 68;
+    --market-deep: 0.38 0.09 50;
+    --market-gold: 0.72 0.17 68;
+
+    --chart-1: 0.646 0.222 41.116;
+    --chart-2: 0.6 0.118 184.704;
+    --chart-3: 0.398 0.07 227.392;
+    --chart-4: 0.828 0.189 84.429;
+    --chart-5: 0.769 0.188 70.08;
+
+    --sidebar: 0.99 0.006 80;
+    --sidebar-foreground: 0.18 0.04 50;
+    --sidebar-primary: 0.52 0.16 50;
+    --sidebar-primary-foreground: 0.99 0.005 80;
+    --sidebar-accent: 0.93 0.03 75;
+    --sidebar-accent-foreground: 0.3 0.07 50;
+    --sidebar-border: 0.88 0.03 72;
+    --sidebar-ring: 0.52 0.16 50;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5 {
+    @apply font-display;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .market-gradient {
+    background: linear-gradient(
+      135deg,
+      oklch(0.95 0.025 72) 0%,
+      oklch(0.97 0.012 75) 50%,
+      oklch(0.94 0.03 68) 100%
+    );
+  }
+  .hero-texture {
+    background-image:
+      radial-gradient(ellipse at 20% 50%, oklch(0.85 0.08 65 / 0.3) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, oklch(0.78 0.12 60 / 0.2) 0%, transparent 50%);
+  }
+}
