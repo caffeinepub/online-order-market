@@ -22,56 +22,52 @@
   :root {
     --radius: 0.5rem;
 
-    /* Warm amber/market palette */
-    --background: 0.97 0.012 75;
-    --foreground: 0.18 0.04 50;
+    /* Blue & white palette */
+    --background: 0.99 0.003 240;
+    --foreground: 0.15 0.03 250;
 
-    --card: 0.99 0.006 80;
-    --card-foreground: 0.18 0.04 50;
+    --card: 1.0 0.0 0;
+    --card-foreground: 0.15 0.03 250;
 
-    --popover: 0.99 0.006 80;
-    --popover-foreground: 0.18 0.04 50;
+    --popover: 1.0 0.0 0;
+    --popover-foreground: 0.15 0.03 250;
 
-    --primary: 0.52 0.16 50;
-    --primary-foreground: 0.99 0.005 80;
+    --primary: 0.48 0.18 250;
+    --primary-foreground: 1.0 0.0 0;
 
-    --secondary: 0.93 0.03 75;
-    --secondary-foreground: 0.3 0.07 50;
+    --secondary: 0.93 0.04 240;
+    --secondary-foreground: 0.25 0.06 250;
 
-    --muted: 0.94 0.018 75;
-    --muted-foreground: 0.52 0.04 60;
+    --muted: 0.94 0.02 240;
+    --muted-foreground: 0.50 0.04 245;
 
-    --accent: 0.72 0.15 55;
-    --accent-foreground: 0.12 0.03 50;
+    --accent: 0.70 0.14 250;
+    --accent-foreground: 1.0 0.0 0;
 
     --destructive: 0.577 0.245 27.325;
     --destructive-foreground: 0.985 0 0;
 
-    --border: 0.88 0.03 72;
-    --input: 0.88 0.03 72;
-    --ring: 0.52 0.16 50;
+    --border: 0.88 0.03 245;
+    --input: 0.88 0.03 245;
+    --ring: 0.48 0.18 250;
 
     --success: 0.62 0.15 145;
     --success-foreground: 0.99 0 0;
 
-    --market-warm: 0.78 0.12 68;
-    --market-deep: 0.38 0.09 50;
-    --market-gold: 0.72 0.17 68;
+    --chart-1: 0.48 0.18 250;
+    --chart-2: 0.60 0.14 220;
+    --chart-3: 0.40 0.10 260;
+    --chart-4: 0.70 0.16 200;
+    --chart-5: 0.55 0.20 240;
 
-    --chart-1: 0.646 0.222 41.116;
-    --chart-2: 0.6 0.118 184.704;
-    --chart-3: 0.398 0.07 227.392;
-    --chart-4: 0.828 0.189 84.429;
-    --chart-5: 0.769 0.188 70.08;
-
-    --sidebar: 0.99 0.006 80;
-    --sidebar-foreground: 0.18 0.04 50;
-    --sidebar-primary: 0.52 0.16 50;
-    --sidebar-primary-foreground: 0.99 0.005 80;
-    --sidebar-accent: 0.93 0.03 75;
-    --sidebar-accent-foreground: 0.3 0.07 50;
-    --sidebar-border: 0.88 0.03 72;
-    --sidebar-ring: 0.52 0.16 50;
+    --sidebar: 1.0 0.0 0;
+    --sidebar-foreground: 0.15 0.03 250;
+    --sidebar-primary: 0.48 0.18 250;
+    --sidebar-primary-foreground: 1.0 0.0 0;
+    --sidebar-accent: 0.93 0.04 240;
+    --sidebar-accent-foreground: 0.25 0.06 250;
+    --sidebar-border: 0.88 0.03 245;
+    --sidebar-ring: 0.48 0.18 250;
   }
 
   * {
@@ -96,14 +92,14 @@
   .market-gradient {
     background: linear-gradient(
       135deg,
-      oklch(0.95 0.025 72) 0%,
-      oklch(0.97 0.012 75) 50%,
-      oklch(0.94 0.03 68) 100%
+      oklch(0.94 0.06 240) 0%,
+      oklch(0.97 0.03 245) 50%,
+      oklch(0.92 0.08 250) 100%
     );
   }
   .hero-texture {
     background-image:
-      radial-gradient(ellipse at 20% 50%, oklch(0.85 0.08 65 / 0.3) 0%, transparent 60%),
-      radial-gradient(ellipse at 80% 20%, oklch(0.78 0.12 60 / 0.2) 0%, transparent 50%);
+      radial-gradient(ellipse at 20% 50%, oklch(0.75 0.14 250 / 0.25) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, oklch(0.65 0.18 245 / 0.15) 0%, transparent 50%);
   }
 }

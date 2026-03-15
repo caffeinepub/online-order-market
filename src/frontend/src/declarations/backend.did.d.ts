@@ -34,12 +34,45 @@ export interface ShopData {
   'address' : string,
   'phone' : string,
 }
+export interface ShopLocation { 'latitude' : number, 'longitude' : number }
+export interface ShopSocials {
+  'tiktok' : string,
+  'instagram' : string,
+  'photoUrl' : string,
+  'facebook' : string,
+}
 export type Time = bigint;
 export interface UserProfile { 'name' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface _CaffeineStorageCreateCertificateResult {
+  'method' : string,
+  'blob_hash' : string,
+}
+export interface _CaffeineStorageRefillInformation {
+  'proposed_top_up_amount' : [] | [bigint],
+}
+export interface _CaffeineStorageRefillResult {
+  'success' : [] | [boolean],
+  'topped_up_amount' : [] | [bigint],
+}
 export interface _SERVICE {
+  '_caffeineStorageBlobIsLive' : ActorMethod<[Uint8Array], boolean>,
+  '_caffeineStorageBlobsToDelete' : ActorMethod<[], Array<Uint8Array>>,
+  '_caffeineStorageConfirmBlobDeletion' : ActorMethod<
+    [Array<Uint8Array>],
+    undefined
+  >,
+  '_caffeineStorageCreateCertificate' : ActorMethod<
+    [string],
+    _CaffeineStorageCreateCertificateResult
+  >,
+  '_caffeineStorageRefillCashier' : ActorMethod<
+    [[] | [_CaffeineStorageRefillInformation]],
+    _CaffeineStorageRefillResult
+  >,
+  '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addProduct' : ActorMethod<[Product], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
@@ -49,13 +82,17 @@ export interface _SERVICE {
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getOrdersForShop' : ActorMethod<[], Array<Order>>,
   'getProductsForShop' : ActorMethod<[Principal], Array<Product>>,
+  'getShopLocation' : ActorMethod<[Principal], [] | [ShopLocation]>,
+  'getShopSocials' : ActorMethod<[Principal], [] | [ShopSocials]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'placeOrder' : ActorMethod<[Principal, Order], undefined>,
   'registerShop' : ActorMethod<[ShopData], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'setShopLocation' : ActorMethod<[number, number], undefined>,
   'updateProduct' : ActorMethod<[Product], undefined>,
   'updateShop' : ActorMethod<[ShopData], undefined>,
+  'updateShopSocials' : ActorMethod<[ShopSocials], undefined>,
   'verifyOrder' : ActorMethod<[bigint], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;

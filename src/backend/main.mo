@@ -6,10 +6,15 @@ import Runtime "mo:core/Runtime";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 import Principal "mo:core/Principal";
+import MixinStorage "blob-storage/Mixin";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
+import Migration "migration";
 
+(with migration = Migration.run)
 actor {
+  include MixinStorage();
+
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
@@ -22,6 +27,18 @@ actor {
     ownerName : Text;
     phone : Text;
     address : Text;
+  };
+
+  type ShopSocials = {
+    facebook : Text;
+    instagram : Text;
+    tiktok : Text;
+    photoUrl : Text;
+  };
+
+  public type ShopLocation = {
+    latitude : Float;
+    longitude : Float;
   };
 
   type Product = {
@@ -53,6 +70,8 @@ actor {
 
   let userProfiles = Map.empty<Principal, UserProfile>();
   let shops = Map.empty<Principal, ShopData>();
+  let shopSocials = Map.empty<Principal, ShopSocials>();
+  let shopLocations = Map.empty<Principal, ShopLocation>();
   let products = Map.empty<Principal, [Product]>();
   let orders = Map.empty<Principal, [Order]>();
 
@@ -90,7 +109,6 @@ actor {
     requireAuthenticated(caller);
     ensureUserRegistered(caller);
     if (shops.containsKey(caller)) {
-      // Already registered — treat as update
       shops.add(caller, shopData);
     } else {
       shops.add(caller, shopData);
@@ -112,6 +130,16 @@ actor {
         shops.add(caller, shopData);
       };
     };
+  };
+
+  public shared ({ caller }) func updateShopSocials(socials : ShopSocials) : async () {
+    requireAuthenticated(caller);
+    ensureUserRegistered(caller);
+    shopSocials.add(caller, socials);
+  };
+
+  public query func getShopSocials(shopOwner : Principal) : async ?ShopSocials {
+    shopSocials.get(shopOwner);
   };
 
   public query func getAllShops() : async [(Principal, ShopData)] {
@@ -183,7 +211,9 @@ actor {
     };
   };
 
-  public func placeOrder(shopOwner : Principal, order : Order) : async () {
+  public shared ({ caller }) func placeOrder(shopOwner : Principal, order : Order) : async () {
+    // Allow anyone (including guests/anonymous) to place orders
+    // This is a public-facing function for customers
     let totalPrice = order.items.foldLeft(
       0.0,
       func(acc : Float, item : OrderItem) : Float {
@@ -262,5 +292,18 @@ actor {
       case (null) { [] };
       case (?shopOrders) { shopOrders };
     };
+  };
+
+  public shared ({ caller }) func setShopLocation(lat : Float, lng : Float) : async () {
+    requireAuthenticated(caller);
+    let location = {
+      latitude = lat;
+      longitude = lng;
+    };
+    shopLocations.add(caller, location);
+  };
+
+  public query func getShopLocation(shopOwner : Principal) : async ?ShopLocation {
+    shopLocations.get(shopOwner);
   };
 };

@@ -1,29 +1,32 @@
 # Online Order Market
 
 ## Current State
-Full-stack marketplace with Home, ShopDetail, OwnerLogin, OwnerDashboard pages. Bilingual EN/SW. ShopData has: businessName, ownerName, phone, address. No photo support. Shop cards show a generic Store icon.
+Full-stack PWA marketplace for Tanzania. Customers browse shops, view products, and place orders. Shop owners register, manage products, handle orders, and set social media links. Blue/white theme, TSh currency, PWA installable, notification system, phone validation.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `photoUrl` optional field to `ShopData` in the Motoko backend
-- Blob-storage component for uploading shop profile photos
-- In OwnerDashboard > Shop Settings tab: a photo upload section where owner can upload/change their shop photo (shown as a preview)
-- On Home page shop cards: display the shop photo as a banner/avatar at the top of the card instead of the generic Store icon
-- On ShopDetail page: display the shop photo in the banner header
+- Shop location (lat/lng) stored in backend per shop; owners can set it from dashboard via browser geolocation or manual input
+- Distance display on shop cards and shop detail page (km from customer's current location)
+- "Nearby" sorting option and distance badge on each shop card
+- Search bar on Home page to filter shops by name, owner, address, or location
+- Shop profiles publicly visible to all users (non-logged-in users can view any shop detail page)
 
 ### Modify
-- `registerShop` and `updateShop` backend calls to include optional `photoUrl`
-- Shop cards in Home.tsx: show photo if available, fallback to colorful gradient placeholder with Store icon
-- ShopDetail banner: show photo if available, fallback to current icon
+- Backend: add `ShopLocation` type and `shopLocations` map with `setShopLocation` and `getShopLocation` functions
+- `useActor.ts`: only call `_initializeAccessControlWithSecret` when admin token is actually present in URL (fix save issues)
+- Home page: add search input above shop grid, add distance badges, add sort by distance toggle
+- ShopDetail page: show distance from user's location
+- OwnerDashboard: add location section where owner can set their shop coordinates
 
 ### Remove
-- Nothing
+- Nothing removed
 
 ## Implementation Plan
-1. Select blob-storage component
-2. Regenerate Motoko backend with photoUrl added to ShopData
-3. Update frontend: OwnerDashboard settings tab gets photo upload with preview
-4. Update Home.tsx shop cards to show photo
-5. Update ShopDetail.tsx banner to show photo
-6. Validate build
+1. Regenerate Motoko backend with new `ShopLocation` type, `setShopLocation`, `getShopLocation` functions added to existing backend
+2. Update `useActor.ts` to only call admin init when token present
+3. Add `useShopLocation` hook for fetching/saving location
+4. Add `useUserLocation` hook for browser geolocation
+5. Update Home.tsx with search bar, distance badges, and sort by distance
+6. Update ShopDetail.tsx with distance display
+7. Update OwnerDashboard.tsx with location setting UI

@@ -8,6 +8,17 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
+export const _CaffeineStorageCreateCertificateResult = IDL.Record({
+  'method' : IDL.Text,
+  'blob_hash' : IDL.Text,
+});
+export const _CaffeineStorageRefillInformation = IDL.Record({
+  'proposed_top_up_amount' : IDL.Opt(IDL.Nat),
+});
+export const _CaffeineStorageRefillResult = IDL.Record({
+  'success' : IDL.Opt(IDL.Bool),
+  'topped_up_amount' : IDL.Opt(IDL.Nat),
+});
 export const Product = IDL.Record({ 'name' : IDL.Text, 'price' : IDL.Float64 });
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
@@ -41,8 +52,44 @@ export const Order = IDL.Record({
   'items' : IDL.Vec(OrderItem),
   'totalPrice' : IDL.Float64,
 });
+export const ShopLocation = IDL.Record({
+  'latitude' : IDL.Float64,
+  'longitude' : IDL.Float64,
+});
+export const ShopSocials = IDL.Record({
+  'tiktok' : IDL.Text,
+  'instagram' : IDL.Text,
+  'photoUrl' : IDL.Text,
+  'facebook' : IDL.Text,
+});
 
 export const idlService = IDL.Service({
+  '_caffeineStorageBlobIsLive' : IDL.Func(
+      [IDL.Vec(IDL.Nat8)],
+      [IDL.Bool],
+      ['query'],
+    ),
+  '_caffeineStorageBlobsToDelete' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Vec(IDL.Nat8))],
+      ['query'],
+    ),
+  '_caffeineStorageConfirmBlobDeletion' : IDL.Func(
+      [IDL.Vec(IDL.Vec(IDL.Nat8))],
+      [],
+      [],
+    ),
+  '_caffeineStorageCreateCertificate' : IDL.Func(
+      [IDL.Text],
+      [_CaffeineStorageCreateCertificateResult],
+      [],
+    ),
+  '_caffeineStorageRefillCashier' : IDL.Func(
+      [IDL.Opt(_CaffeineStorageRefillInformation)],
+      [_CaffeineStorageRefillResult],
+      [],
+    ),
+  '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addProduct' : IDL.Func([Product], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
@@ -60,6 +107,16 @@ export const idlService = IDL.Service({
       [IDL.Vec(Product)],
       ['query'],
     ),
+  'getShopLocation' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Opt(ShopLocation)],
+      ['query'],
+    ),
+  'getShopSocials' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Opt(ShopSocials)],
+      ['query'],
+    ),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
@@ -69,14 +126,27 @@ export const idlService = IDL.Service({
   'placeOrder' : IDL.Func([IDL.Principal, Order], [], []),
   'registerShop' : IDL.Func([ShopData], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'setShopLocation' : IDL.Func([IDL.Float64, IDL.Float64], [], []),
   'updateProduct' : IDL.Func([Product], [], []),
   'updateShop' : IDL.Func([ShopData], [], []),
+  'updateShopSocials' : IDL.Func([ShopSocials], [], []),
   'verifyOrder' : IDL.Func([IDL.Nat], [], []),
 });
 
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
+  const _CaffeineStorageCreateCertificateResult = IDL.Record({
+    'method' : IDL.Text,
+    'blob_hash' : IDL.Text,
+  });
+  const _CaffeineStorageRefillInformation = IDL.Record({
+    'proposed_top_up_amount' : IDL.Opt(IDL.Nat),
+  });
+  const _CaffeineStorageRefillResult = IDL.Record({
+    'success' : IDL.Opt(IDL.Bool),
+    'topped_up_amount' : IDL.Opt(IDL.Nat),
+  });
   const Product = IDL.Record({ 'name' : IDL.Text, 'price' : IDL.Float64 });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
@@ -110,8 +180,44 @@ export const idlFactory = ({ IDL }) => {
     'items' : IDL.Vec(OrderItem),
     'totalPrice' : IDL.Float64,
   });
+  const ShopLocation = IDL.Record({
+    'latitude' : IDL.Float64,
+    'longitude' : IDL.Float64,
+  });
+  const ShopSocials = IDL.Record({
+    'tiktok' : IDL.Text,
+    'instagram' : IDL.Text,
+    'photoUrl' : IDL.Text,
+    'facebook' : IDL.Text,
+  });
   
   return IDL.Service({
+    '_caffeineStorageBlobIsLive' : IDL.Func(
+        [IDL.Vec(IDL.Nat8)],
+        [IDL.Bool],
+        ['query'],
+      ),
+    '_caffeineStorageBlobsToDelete' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Vec(IDL.Nat8))],
+        ['query'],
+      ),
+    '_caffeineStorageConfirmBlobDeletion' : IDL.Func(
+        [IDL.Vec(IDL.Vec(IDL.Nat8))],
+        [],
+        [],
+      ),
+    '_caffeineStorageCreateCertificate' : IDL.Func(
+        [IDL.Text],
+        [_CaffeineStorageCreateCertificateResult],
+        [],
+      ),
+    '_caffeineStorageRefillCashier' : IDL.Func(
+        [IDL.Opt(_CaffeineStorageRefillInformation)],
+        [_CaffeineStorageRefillResult],
+        [],
+      ),
+    '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'addProduct' : IDL.Func([Product], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
@@ -129,6 +235,16 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(Product)],
         ['query'],
       ),
+    'getShopLocation' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(ShopLocation)],
+        ['query'],
+      ),
+    'getShopSocials' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(ShopSocials)],
+        ['query'],
+      ),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
@@ -138,8 +254,10 @@ export const idlFactory = ({ IDL }) => {
     'placeOrder' : IDL.Func([IDL.Principal, Order], [], []),
     'registerShop' : IDL.Func([ShopData], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'setShopLocation' : IDL.Func([IDL.Float64, IDL.Float64], [], []),
     'updateProduct' : IDL.Func([Product], [], []),
     'updateShop' : IDL.Func([ShopData], [], []),
+    'updateShopSocials' : IDL.Func([ShopSocials], [], []),
     'verifyOrder' : IDL.Func([IDL.Nat], [], []),
   });
 };

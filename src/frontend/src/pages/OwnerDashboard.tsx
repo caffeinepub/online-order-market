@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,6 +18,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
   AlertCircle,
+  Bell,
   Camera,
   CheckCircle,
   Clock,
@@ -32,6 +34,7 @@ import {
   ShoppingBag,
   Trash2,
   User,
+  Volume2,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
@@ -42,6 +45,8 @@ import Footer from "../components/Footer";
 import Header from "../components/Header";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { useNotifSound } from "../hooks/useNotifSound";
+import { playSound, useOrderNotification } from "../hooks/useOrderNotification";
 import {
   useAddProduct,
   useDeleteProduct,
@@ -53,11 +58,19 @@ import {
   useUpdateShop,
   useVerifyOrder,
 } from "../hooks/useQueries";
+import { useSaveShopLocation, useShopLocation } from "../hooks/useShopLocation";
 import {
   useShopPhotoReactive,
   useUploadShopPhoto,
 } from "../hooks/useShopPhoto";
 import { useSaveShopSocials, useShopSocials } from "../hooks/useShopSocials";
+
+const SOUND_OPTIONS = [
+  { id: "bell", label: "Bell" },
+  { id: "chime", label: "Chime" },
+  { id: "ding", label: "Ding" },
+  { id: "alert", label: "Alert" },
+];
 
 export default function OwnerDashboard() {
   const { identity, clear, isInitializing } = useInternetIdentity();
@@ -82,11 +95,49 @@ export default function OwnerDashboard() {
   const deleteProduct = useDeleteProduct();
   const registerShop = useRegisterShop();
   const updateShop = useUpdateShop();
+  const saveSocials = useSaveShopSocials();
 
   // Photo
   const photoUrl = useShopPhotoReactive(ownerPrincipal);
   const { uploadPhoto, isUploading } = useUploadShopPhoto();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Active tab tracking
+  const myShop =
+    allShops?.find(([p]) => p.toString() === ownerPrincipal)?.[1] ?? null;
+  const [activeTab, setActiveTab] = useState(myShop ? "orders" : "settings");
+
+  // Notification hooks
+  const { hasUnread } = useOrderNotification(orders, activeTab === "orders");
+  const myPrincipal = identity?.getPrincipal().toString() ?? "";
+  const { data: savedShopLoc } = useShopLocation(myPrincipal);
+  const saveLocation = useSaveShopLocation();
+  const [locSaving, setLocSaving] = useState(false);
+
+  const handleSaveCurrentLocation = () => {
+    if (!navigator.geolocation) return;
+    setLocSaving(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          await saveLocation.mutateAsync({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          });
+          toast.success(t("locationSaved"));
+        } catch {
+          toast.error(t("locationSaveError"));
+        } finally {
+          setLocSaving(false);
+        }
+      },
+      () => {
+        toast.error(t("locationPermissionDenied"));
+        setLocSaving(false);
+      },
+    );
+  };
+  const { selectedSound, setSelectedSound } = useNotifSound();
 
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -101,18 +152,20 @@ export default function OwnerDashboard() {
     } catch {
       toast.error("Failed to save photo.");
     }
-    // Reset file input
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
-
-  const myShop =
-    allShops?.find(([p]) => p.toString() === ownerPrincipal)?.[1] ?? null;
 
   const [shopForm, setShopForm] = useState<ShopData>({
     businessName: "",
     ownerName: "",
     phone: "",
     address: "",
+  });
+  const [socialForm, setSocialForm] = useState({
+    facebook: "",
+    instagram: "",
+    tiktok: "",
+    photoUrl: "",
   });
 
   useEffect(() => {
@@ -126,8 +179,33 @@ export default function OwnerDashboard() {
     }
   }, [myShop]);
 
+  const currentSocials = useShopSocials(ownerPrincipal || "");
+  useEffect(() => {
+    if (
+      currentSocials.facebook ||
+      currentSocials.instagram ||
+      currentSocials.tiktok
+    ) {
+      setSocialForm({
+        facebook: currentSocials.facebook,
+        instagram: currentSocials.instagram,
+        tiktok: currentSocials.tiktok,
+        photoUrl: currentSocials.photoUrl || "",
+      });
+    }
+  }, [
+    currentSocials.facebook,
+    currentSocials.instagram,
+    currentSocials.tiktok,
+    currentSocials.photoUrl,
+  ]);
+
   const handleShopSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!/^\d{10}$/.test(shopForm.phone)) {
+      toast.error("Please enter a valid 10-digit phone number");
+      return;
+    }
     try {
       if (myShop) {
         await updateShop.mutateAsync(shopForm);
@@ -141,26 +219,22 @@ export default function OwnerDashboard() {
     }
   };
 
+  const handleSocialSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ownerPrincipal) return;
+    try {
+      await saveSocials.mutateAsync({
+        principalId: ownerPrincipal,
+        socials: socialForm,
+      });
+      toast.success(t("shopUpdated"));
+    } catch {
+      toast.error(t("shopSaveError"));
+    }
+  };
+
   const [newProductName, setNewProductName] = useState("");
   const [newProductPrice, setNewProductPrice] = useState("");
-  // Social media state
-  const storedSocials = useShopSocials(ownerPrincipal ?? "");
-  const saveSocials = useSaveShopSocials();
-  const [socialForm, setSocialForm] = useState({
-    facebook: "",
-    instagram: "",
-    tiktok: "",
-  });
-
-  useEffect(() => {
-    setSocialForm({ ...storedSocials });
-  }, [storedSocials]);
-
-  const handleSaveSocials = () => {
-    if (!ownerPrincipal) return;
-    saveSocials(ownerPrincipal, socialForm);
-    toast.success(t("socialLinksSaved"));
-  };
 
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
   const [editProductPrice, setEditProductPrice] = useState("");
@@ -302,14 +376,23 @@ export default function OwnerDashboard() {
 
         {/* Tabs */}
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-          <Tabs defaultValue={myShop ? "orders" : "settings"}>
+          <Tabs
+            defaultValue={myShop ? "orders" : "settings"}
+            onValueChange={setActiveTab}
+          >
             <TabsList className="mb-6" data-ocid="dashboard.tab">
               <TabsTrigger
                 value="orders"
                 className="gap-2 font-bold"
                 data-ocid="dashboard.orders.tab"
               >
-                <ShoppingBag className="h-4 w-4" /> {t("orders")}
+                <div className="relative inline-flex items-center">
+                  <ShoppingBag className="h-4 w-4" />
+                  {hasUnread && (
+                    <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse shadow-sm shadow-green-400" />
+                  )}
+                </div>
+                {t("orders")}
                 {orders && orders.length > 0 && (
                   <Badge className="ml-1 h-5 min-w-5 text-xs bg-primary text-primary-foreground">
                     {orders.filter((o) => o.status === "pending").length}
@@ -428,17 +511,18 @@ export default function OwnerDashboard() {
                                     {item.quantity.toString()}
                                   </span>
                                   <span className="font-bold">
-                                    $
+                                    TSh{" "}
                                     {(
                                       Number(item.quantity) * item.unitPrice
-                                    ).toFixed(2)}
+                                    ).toLocaleString()}
                                   </span>
                                 </div>
                               ))}
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="font-bold text-primary">
-                                {t("total")}: ${order.totalPrice.toFixed(2)}
+                                {t("total")}: TSh{" "}
+                                {order.totalPrice.toLocaleString()}
                               </span>
                               {order.status !== "verified" && (
                                 <Button
@@ -600,7 +684,7 @@ export default function OwnerDashboard() {
                                     {product.name}
                                   </span>
                                   <span className="ml-3 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
-                                    ${product.price.toFixed(2)}
+                                    TSh {product.price.toLocaleString()}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1">
@@ -669,7 +753,6 @@ export default function OwnerDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center gap-4">
-                      {/* Preview */}
                       <div className="w-24 h-24 rounded-xl border-2 border-primary/20 overflow-hidden bg-muted/50 flex-shrink-0">
                         {photoUrl ? (
                           <img
@@ -683,8 +766,6 @@ export default function OwnerDashboard() {
                           </div>
                         )}
                       </div>
-
-                      {/* Upload button */}
                       <div className="space-y-2">
                         <input
                           ref={fileInputRef}
@@ -770,12 +851,19 @@ export default function OwnerDashboard() {
                         </Label>
                         <Input
                           id="shopPhone"
-                          placeholder="+1 234 567 8900"
+                          placeholder="0712345678"
                           type="tel"
                           value={shopForm.phone}
                           onChange={(e) =>
-                            setShopForm({ ...shopForm, phone: e.target.value })
+                            setShopForm({
+                              ...shopForm,
+                              phone: e.target.value
+                                .replace(/\D/g, "")
+                                .slice(0, 10),
+                            })
                           }
+                          maxLength={10}
+                          pattern="[0-9]{10}"
                           required
                           data-ocid="settings.input"
                         />
@@ -838,101 +926,208 @@ export default function OwnerDashboard() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="space-y-1.5">
-                      <Label
-                        htmlFor="fbPage"
-                        className="font-bold flex items-center gap-2"
-                      >
-                        <FaFacebook
-                          className="h-4 w-4"
-                          style={{ color: "#1877F2" }}
-                        />
-                        {t("facebookPage")}
-                      </Label>
-                      <div className="relative">
-                        <FaFacebook
-                          className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none"
-                          style={{ color: "#1877F2" }}
-                        />
-                        <Input
-                          id="fbPage"
-                          placeholder="https://facebook.com/yourpage"
-                          value={socialForm.facebook}
-                          onChange={(e) =>
-                            setSocialForm({
-                              ...socialForm,
-                              facebook: e.target.value,
-                            })
-                          }
-                          className="pl-9 font-medium"
-                          data-ocid="settings.facebook.input"
-                        />
+                    <form onSubmit={handleSocialSave} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label
+                          htmlFor="fbPage"
+                          className="font-bold flex items-center gap-2"
+                        >
+                          <FaFacebook
+                            className="h-4 w-4"
+                            style={{ color: "#1877F2" }}
+                          />
+                          {t("facebookPage")}
+                        </Label>
+                        <div className="relative">
+                          <FaFacebook
+                            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none"
+                            style={{ color: "#1877F2" }}
+                          />
+                          <Input
+                            id="fbPage"
+                            placeholder="https://facebook.com/yourpage"
+                            value={socialForm.facebook}
+                            onChange={(e) =>
+                              setSocialForm({
+                                ...socialForm,
+                                facebook: e.target.value,
+                              })
+                            }
+                            className="pl-9 font-medium"
+                            data-ocid="settings.facebook.input"
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label
-                        htmlFor="igPage"
-                        className="font-bold flex items-center gap-2"
-                      >
-                        <FaInstagram
-                          className="h-4 w-4"
-                          style={{ color: "#E1306C" }}
-                        />
-                        {t("instagramPage")}
-                      </Label>
-                      <div className="relative">
-                        <FaInstagram
-                          className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none"
-                          style={{ color: "#E1306C" }}
-                        />
-                        <Input
-                          id="igPage"
-                          placeholder="https://instagram.com/yourpage"
-                          value={socialForm.instagram}
-                          onChange={(e) =>
-                            setSocialForm({
-                              ...socialForm,
-                              instagram: e.target.value,
-                            })
-                          }
-                          className="pl-9 font-medium"
-                          data-ocid="settings.instagram.input"
-                        />
+                      <div className="space-y-1.5">
+                        <Label
+                          htmlFor="igPage"
+                          className="font-bold flex items-center gap-2"
+                        >
+                          <FaInstagram
+                            className="h-4 w-4"
+                            style={{ color: "#E1306C" }}
+                          />
+                          {t("instagramPage")}
+                        </Label>
+                        <div className="relative">
+                          <FaInstagram
+                            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none"
+                            style={{ color: "#E1306C" }}
+                          />
+                          <Input
+                            id="igPage"
+                            placeholder="https://instagram.com/yourpage"
+                            value={socialForm.instagram}
+                            onChange={(e) =>
+                              setSocialForm({
+                                ...socialForm,
+                                instagram: e.target.value,
+                              })
+                            }
+                            className="pl-9 font-medium"
+                            data-ocid="settings.instagram.input"
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label
-                        htmlFor="ttPage"
-                        className="font-bold flex items-center gap-2"
-                      >
-                        <FaTiktok className="h-4 w-4 text-foreground" />
-                        {t("tiktokPage")}
-                      </Label>
-                      <div className="relative">
-                        <FaTiktok className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none text-foreground" />
-                        <Input
-                          id="ttPage"
-                          placeholder="https://tiktok.com/@yourpage"
-                          value={socialForm.tiktok}
-                          onChange={(e) =>
-                            setSocialForm({
-                              ...socialForm,
-                              tiktok: e.target.value,
-                            })
-                          }
-                          className="pl-9 font-medium"
-                          data-ocid="settings.tiktok.input"
-                        />
+                      <div className="space-y-1.5">
+                        <Label
+                          htmlFor="ttPage"
+                          className="font-bold flex items-center gap-2"
+                        >
+                          <FaTiktok className="h-4 w-4 text-foreground" />
+                          {t("tiktokPage")}
+                        </Label>
+                        <div className="relative">
+                          <FaTiktok className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none text-foreground" />
+                          <Input
+                            id="ttPage"
+                            placeholder="https://tiktok.com/@yourpage"
+                            value={socialForm.tiktok}
+                            onChange={(e) =>
+                              setSocialForm({
+                                ...socialForm,
+                                tiktok: e.target.value,
+                              })
+                            }
+                            className="pl-9 font-medium"
+                            data-ocid="settings.tiktok.input"
+                          />
+                        </div>
                       </div>
-                    </div>
+                      <Button
+                        type="submit"
+                        className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold shadow-md mt-2"
+                        disabled={saveSocials.isPending}
+                        data-ocid="settings.social.submit_button"
+                      >
+                        {saveSocials.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />{" "}
+                            {t("saving")}
+                          </>
+                        ) : (
+                          t("saveSocialLinks") || "Save Social Links"
+                        )}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+
+                {/* Shop Location Card */}
+                <Card className="border-2 border-primary/20 shadow-md">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="font-display font-bold text-base flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-primary" />
+                      {t("shopLocationSection")}
+                    </CardTitle>
+                    <CardDescription className="text-xs font-medium">
+                      {t("shopLocationHint")}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {savedShopLoc && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground bg-blue-50 rounded-lg px-3 py-2 border border-blue-100">
+                        <MapPin className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                        <span className="font-medium">
+                          {t(
+                            "shopLocationSet",
+                            savedShopLoc.latitude.toFixed(4),
+                            savedShopLoc.longitude.toFixed(4),
+                          )}
+                        </span>
+                      </div>
+                    )}
                     <Button
                       type="button"
-                      className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold shadow-md gap-2"
-                      onClick={handleSaveSocials}
-                      data-ocid="settings.social.save_button"
+                      variant="outline"
+                      className="gap-2 border-2 border-primary/40 text-primary hover:bg-primary/5 font-bold"
+                      onClick={handleSaveCurrentLocation}
+                      disabled={locSaving}
+                      data-ocid="shop.location.button"
                     >
-                      <Share2 className="h-4 w-4" />
-                      {t("saveSocialLinks")}
+                      {locSaving ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <MapPin className="h-4 w-4" />
+                      )}
+                      {t("useMyCurrentLocation")}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Notification Sound Card */}
+                <Card
+                  className="border-2 border-primary/20 shadow-md"
+                  data-ocid="settings.notif_sound.card"
+                >
+                  <CardHeader className="pb-3">
+                    <CardTitle className="font-display font-bold text-base flex items-center gap-2">
+                      <Bell className="h-4 w-4 text-primary" />
+                      Notification Sound
+                    </CardTitle>
+                    <CardDescription className="text-xs font-medium">
+                      Choose the sound you hear when a new order arrives
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <RadioGroup
+                      value={selectedSound}
+                      onValueChange={setSelectedSound}
+                      className="grid grid-cols-2 gap-3"
+                    >
+                      {SOUND_OPTIONS.map((opt) => (
+                        <div
+                          key={opt.id}
+                          className={`flex items-center gap-2 rounded-lg border-2 px-3 py-2.5 cursor-pointer transition-colors ${
+                            selectedSound === opt.id
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/40"
+                          }`}
+                        >
+                          <RadioGroupItem
+                            value={opt.id}
+                            id={`sound-${opt.id}`}
+                            data-ocid="settings.notif_sound.radio"
+                          />
+                          <Label
+                            htmlFor={`sound-${opt.id}`}
+                            className="cursor-pointer font-bold text-sm"
+                          >
+                            {opt.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="gap-2 border-2 border-primary/40 text-primary hover:bg-primary/5 font-bold"
+                      onClick={() => playSound(selectedSound)}
+                      data-ocid="settings.notif_sound.primary_button"
+                    >
+                      <Volume2 className="h-4 w-4" />
+                      Test Sound
                     </Button>
                   </CardContent>
                 </Card>

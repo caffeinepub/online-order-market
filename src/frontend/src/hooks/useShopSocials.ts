@@ -1,58 +1,60 @@
-import { useCallback, useEffect, useState } from "react";
+import { Principal } from "@icp-sdk/core/principal";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useActor } from "./useActor";
 
 export interface ShopSocials {
   facebook: string;
   instagram: string;
   tiktok: string;
-}
-
-const DEFAULT_SOCIALS: ShopSocials = {
-  facebook: "",
-  instagram: "",
-  tiktok: "",
-};
-
-function getStoredSocials(principalId: string): ShopSocials {
-  if (!principalId) return DEFAULT_SOCIALS;
-  try {
-    const raw = localStorage.getItem(`shopSocials_${principalId}`);
-    if (!raw) return DEFAULT_SOCIALS;
-    return { ...DEFAULT_SOCIALS, ...JSON.parse(raw) };
-  } catch {
-    return DEFAULT_SOCIALS;
-  }
+  photoUrl?: string;
 }
 
 export function useShopSocials(principalId: string): ShopSocials {
-  const [socials, setSocials] = useState<ShopSocials>(() =>
-    getStoredSocials(principalId),
-  );
-
-  useEffect(() => {
-    setSocials(getStoredSocials(principalId));
-  }, [principalId]);
-
-  useEffect(() => {
-    function handleStorage(e: StorageEvent) {
-      if (e.key === `shopSocials_${principalId}`) {
-        setSocials(getStoredSocials(principalId));
+  const { actor, isFetching: actorFetching } = useActor();
+  const query = useQuery({
+    queryKey: ["shopSocials", principalId],
+    queryFn: async () => {
+      if (!actor || !principalId) return null;
+      try {
+        const p = Principal.fromText(principalId);
+        return await actor.getShopSocials(p);
+      } catch {
+        return null;
       }
-    }
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, [principalId]);
+    },
+    enabled: !!actor && !actorFetching && !!principalId,
+  });
+  const data = query.data;
+  return {
+    facebook: data?.facebook || "",
+    instagram: data?.instagram || "",
+    tiktok: data?.tiktok || "",
+    photoUrl: data?.photoUrl || "",
+  };
+}
 
-  return socials;
+interface SaveSocialsVars {
+  principalId: string;
+  socials: ShopSocials;
 }
 
 export function useSaveShopSocials() {
-  const save = useCallback((principalId: string, socials: ShopSocials) => {
-    if (!principalId) return;
-    localStorage.setItem(`shopSocials_${principalId}`, JSON.stringify(socials));
-    // Dispatch storage event for same-tab reactivity
-    window.dispatchEvent(
-      new StorageEvent("storage", { key: `shopSocials_${principalId}` }),
-    );
-  }, []);
-  return save;
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: SaveSocialsVars) => {
+      if (!actor) throw new Error("Not connected");
+      await actor.updateShopSocials({
+        facebook: vars.socials.facebook || "",
+        instagram: vars.socials.instagram || "",
+        tiktok: vars.socials.tiktok || "",
+        photoUrl: vars.socials.photoUrl || "",
+      });
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["shopSocials", variables.principalId],
+      });
+    },
+  });
 }

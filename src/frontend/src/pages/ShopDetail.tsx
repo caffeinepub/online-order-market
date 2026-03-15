@@ -35,8 +35,10 @@ import {
   useGetProductsForShop,
   usePlaceOrder,
 } from "../hooks/useQueries";
+import { useShopLocation, useUserLocation } from "../hooks/useShopLocation";
 import { useShopPhoto } from "../hooks/useShopPhoto";
 import { useShopSocials } from "../hooks/useShopSocials";
+import { calcDistanceKm, formatDistance } from "../utils/distance";
 
 export default function ShopDetail() {
   const { ownerPrincipal } = useParams({ from: "/shop/$ownerPrincipal" });
@@ -45,6 +47,17 @@ export default function ShopDetail() {
   const photoUrl = useShopPhoto(ownerPrincipal);
   const socials = useShopSocials(ownerPrincipal);
   const hasSocials = socials.facebook || socials.instagram || socials.tiktok;
+  const { location: userLocation } = useUserLocation();
+  const { data: shopLoc } = useShopLocation(ownerPrincipal);
+  const distanceKm =
+    userLocation && shopLoc
+      ? calcDistanceKm(
+          userLocation.lat,
+          userLocation.lng,
+          shopLoc.latitude,
+          shopLoc.longitude,
+        )
+      : null;
 
   const { data: shops, isLoading: shopsLoading } = useGetAllShops();
   const { data: products, isLoading: productsLoading } =
@@ -84,6 +97,11 @@ export default function ShopDetail() {
 
     if (items.length === 0) {
       toast.error(t("selectAtLeastOne"));
+      return;
+    }
+
+    if (!/^\d{10}$/.test(customerPhone)) {
+      toast.error("Please enter a valid 10-digit phone number");
       return;
     }
 
@@ -258,6 +276,12 @@ export default function ShopDetail() {
                   <span className="flex items-center gap-1 font-medium">
                     <MapPin className="h-4 w-4" /> {shop.address}
                   </span>
+                  {distanceKm !== null && (
+                    <span className="flex items-center gap-1 font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                      <MapPin className="h-4 w-4" />{" "}
+                      {formatDistance(distanceKm)} away
+                    </span>
+                  )}
                 </div>
                 {hasSocials && (
                   <div className="flex flex-wrap items-center gap-2 mt-3">
@@ -406,7 +430,13 @@ export default function ShopDetail() {
                         id="customerPhone"
                         type="tel"
                         value={customerPhone}
-                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        onChange={(e) =>
+                          setCustomerPhone(
+                            e.target.value.replace(/\D/g, "").slice(0, 10),
+                          )
+                        }
+                        maxLength={10}
+                        pattern="[0-9]{10}"
                         required
                         data-ocid="order.input"
                       />

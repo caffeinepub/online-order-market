@@ -136,6 +136,24 @@ const translations = {
     visitInstagram: "Instagram",
     visitTikTok: "TikTok",
     advertisingSection: "Advertise With Us",
+
+    // Location
+    findNearbyShops: "Find Nearby Shops",
+    nearbyShopsActive: "Nearby mode active",
+    sortByDistance: "Sort by Distance",
+    sortByDefault: "Default Order",
+    searchShopsPlaceholder: "Search shops by name or location...",
+    distanceAway: (d: string) => `${d} away`,
+    locationPermissionDenied:
+      "Location access denied. Please allow location in browser settings.",
+    gettingLocation: "Getting location...",
+    shopLocationSet: (lat: string, lng: string) =>
+      `Location set: ${lat}, ${lng}`,
+    useMyCurrentLocation: "Use My Current Location",
+    shopLocationHint: "Setting your location helps customers find you nearby",
+    shopLocationSection: "Shop Location",
+    locationSaved: "Location saved!",
+    locationSaveError: "Failed to save location.",
   },
   sw: {
     // Header
@@ -272,6 +290,24 @@ const translations = {
     visitInstagram: "Instagram",
     visitTikTok: "TikTok",
     advertisingSection: "Tangaza Biashara Yako",
+
+    // Location
+    findNearbyShops: "Pata Maduka Karibu",
+    nearbyShopsActive: "Hali ya karibu imewashwa",
+    sortByDistance: "Panga kwa Umbali",
+    sortByDefault: "Mpangilio wa Kawaida",
+    searchShopsPlaceholder: "Tafuta maduka kwa jina au mahali...",
+    distanceAway: (d: string) => `${d} mbali`,
+    locationPermissionDenied:
+      "Ufikiaji wa eneo ulikataliwa. Tafadhali ruhusu eneo kwenye mipangilio ya kivinjari.",
+    gettingLocation: "Inapata eneo...",
+    shopLocationSet: (lat: string, lng: string) =>
+      `Eneo limewekwa: ${lat}, ${lng}`,
+    useMyCurrentLocation: "Tumia Eneo Langu la Sasa",
+    shopLocationHint: "Kuweka eneo lako husaidia wateja kukupata karibu",
+    shopLocationSection: "Eneo la Duka",
+    locationSaved: "Eneo limehifadhiwa!",
+    locationSaveError: "Imeshindwa kuhifadhi eneo.",
   },
 };
 

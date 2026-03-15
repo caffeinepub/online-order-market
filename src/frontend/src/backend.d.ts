@@ -13,11 +13,25 @@ export interface ShopData {
     address: string;
     phone: string;
 }
+export interface ShopLocation {
+    latitude: number;
+    longitude: number;
+}
+export interface Product {
+    name: string;
+    price: number;
+}
 export type Time = bigint;
 export interface OrderItem {
     productName: string;
     quantity: bigint;
     unitPrice: number;
+}
+export interface ShopSocials {
+    tiktok: string;
+    instagram: string;
+    photoUrl: string;
+    facebook: string;
 }
 export interface Order {
     customerName: string;
@@ -31,10 +45,6 @@ export interface Order {
 }
 export interface UserProfile {
     name: string;
-}
-export interface Product {
-    name: string;
-    price: number;
 }
 export enum OrderStatus {
     verified = "verified",
@@ -54,12 +64,16 @@ export interface backendInterface {
     getCallerUserRole(): Promise<UserRole>;
     getOrdersForShop(): Promise<Array<Order>>;
     getProductsForShop(shopOwner: Principal): Promise<Array<Product>>;
+    getShopLocation(shopOwner: Principal): Promise<ShopLocation | null>;
+    getShopSocials(shopOwner: Principal): Promise<ShopSocials | null>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     placeOrder(shopOwner: Principal, order: Order): Promise<void>;
     registerShop(shopData: ShopData): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    setShopLocation(lat: number, lng: number): Promise<void>;
     updateProduct(product: Product): Promise<void>;
     updateShop(shopData: ShopData): Promise<void>;
+    updateShopSocials(socials: ShopSocials): Promise<void>;
     verifyOrder(orderId: bigint): Promise<void>;
 }

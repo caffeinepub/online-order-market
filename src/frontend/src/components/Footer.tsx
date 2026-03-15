@@ -1,6 +1,5 @@
 export default function Footer() {
   const year = new Date().getFullYear();
-  const href = `https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`;
 
   return (
     <footer className="border-t border-border bg-card mt-auto">
@@ -10,15 +9,9 @@ export default function Footer() {
             Online Order Market
           </p>
           <p>
-            © {year}. Built with ❤️ using{" "}
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-foreground transition-colors"
-            >
-              caffeine.ai
-            </a>
+            Created by{" "}
+            <span className="font-semibold text-foreground">ycdom</span>{" "}
+            &nbsp;|&nbsp; © {year}. Built with ❤️ using Caffeine
           </p>
         </div>
       </div>

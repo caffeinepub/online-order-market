@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useShopSocials } from "./useShopSocials";
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -9,19 +10,21 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-export function useShopPhoto(principalId: string | undefined) {
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+export function useShopPhoto(principalId: string | undefined): string | null {
+  const socials = useShopSocials(principalId || "");
+  if (socials.photoUrl) return socials.photoUrl;
+  if (!principalId) return null;
+  try {
+    return localStorage.getItem(`shopPhoto_${principalId}`) ?? null;
+  } catch {
+    return null;
+  }
+}
 
-  useEffect(() => {
-    if (!principalId) {
-      setPhotoUrl(null);
-      return;
-    }
-    const stored = localStorage.getItem(`shopPhoto_${principalId}`);
-    setPhotoUrl(stored ?? null);
-  }, [principalId]);
-
-  return photoUrl;
+export function useShopPhotoReactive(
+  principalId: string | undefined,
+): string | null {
+  return useShopPhoto(principalId);
 }
 
 export function useUploadShopPhoto() {
@@ -33,7 +36,6 @@ export function useUploadShopPhoto() {
       try {
         const dataUrl = await fileToDataUrl(file);
         localStorage.setItem(`shopPhoto_${principalId}`, dataUrl);
-        // Dispatch a storage event so other hooks on the same page can react
         window.dispatchEvent(
           new StorageEvent("storage", {
             key: `shopPhoto_${principalId}`,
@@ -49,29 +51,4 @@ export function useUploadShopPhoto() {
   );
 
   return { uploadPhoto, isUploading };
-}
-
-export function useShopPhotoReactive(principalId: string | undefined) {
-  const [photoUrl, setPhotoUrl] = useState<string | null>(() => {
-    if (!principalId) return null;
-    return localStorage.getItem(`shopPhoto_${principalId}`) ?? null;
-  });
-
-  useEffect(() => {
-    if (!principalId) {
-      setPhotoUrl(null);
-      return;
-    }
-    setPhotoUrl(localStorage.getItem(`shopPhoto_${principalId}`) ?? null);
-
-    const handler = (e: StorageEvent) => {
-      if (e.key === `shopPhoto_${principalId}`) {
-        setPhotoUrl(e.newValue ?? null);
-      }
-    };
-    window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
-  }, [principalId]);
-
-  return photoUrl;
 }

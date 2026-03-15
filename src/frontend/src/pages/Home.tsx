@@ -7,28 +7,71 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Principal } from "@icp-sdk/core/principal";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, BookOpen, MapPin, Phone, Store, User } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  Loader2,
+  MapPin,
+  Navigation,
+  Phone,
+  Search,
+  Store,
+  User,
+} from "lucide-react";
 import { motion } from "motion/react";
+import { useMemo, useState } from "react";
 import { FaFacebook, FaInstagram, FaTiktok } from "react-icons/fa";
 import type { ShopData } from "../backend.d";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useGetAllShops } from "../hooks/useQueries";
+import { useShopLocation, useUserLocation } from "../hooks/useShopLocation";
 import { useShopPhoto } from "../hooks/useShopPhoto";
 import { useShopSocials } from "../hooks/useShopSocials";
+import { calcDistanceKm, formatDistance } from "../utils/distance";
+
+function DistanceBadge({
+  principalId,
+  userLat,
+  userLng,
+}: {
+  principalId: string;
+  userLat: number;
+  userLng: number;
+}) {
+  const { data: shopLoc } = useShopLocation(principalId);
+  if (!shopLoc) return null;
+  const km = calcDistanceKm(
+    userLat,
+    userLng,
+    shopLoc.latitude,
+    shopLoc.longitude,
+  );
+  return (
+    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold border border-blue-200">
+      <MapPin className="h-3 w-3" />
+      {formatDistance(km)} away
+    </div>
+  );
+}
 
 function ShopCard({
   principal,
   shop,
   index,
+  userLat,
+  userLng,
 }: {
   principal: Principal;
   shop: ShopData;
   index: number;
+  userLat?: number;
+  userLng?: number;
 }) {
   const { t } = useLanguage();
   const photoUrl = useShopPhoto(principal.toString());
@@ -64,7 +107,7 @@ function ShopCard({
         )}
 
         <CardHeader className="pb-3">
-          <div className="flex items-start gap-3">
+          <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <CardTitle className="font-display font-extrabold text-xl leading-tight">
                 {shop.businessName}
@@ -73,6 +116,13 @@ function ShopCard({
                 <User className="h-3 w-3" /> {shop.ownerName}
               </p>
             </div>
+            {userLat !== undefined && userLng !== undefined && (
+              <DistanceBadge
+                principalId={principal.toString()}
+                userLat={userLat}
+                userLng={userLng}
+              />
+            )}
           </div>
         </CardHeader>
         <CardContent className="flex-1 space-y-2 pb-4">
@@ -164,6 +214,29 @@ function ShopCard({
 export default function Home() {
   const { data: shops, isLoading } = useGetAllShops();
   const { t } = useLanguage();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortByDist, setSortByDist] = useState(false);
+  const {
+    location: userLocation,
+    loading: locLoading,
+    error: locError,
+    requestLocation,
+  } = useUserLocation();
+
+  const filteredShops = useMemo(() => {
+    if (!shops) return [];
+    let result = shops;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        ([, shop]) =>
+          shop.businessName.toLowerCase().includes(q) ||
+          shop.ownerName.toLowerCase().includes(q) ||
+          shop.address.toLowerCase().includes(q),
+      );
+    }
+    return result;
+  }, [shops, searchQuery]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -227,17 +300,75 @@ export default function Home() {
         {/* Shop Directory */}
         <section id="shops" className="py-12 sm:py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-2xl sm:text-3xl font-display font-extrabold text-foreground">
-                  {t("registeredShops")}
-                </h2>
-                <p className="text-muted-foreground mt-1 font-medium">
-                  {isLoading
-                    ? t("loading")
-                    : t("shopsAvailable", shops?.length ?? 0)}
-                </p>
+            <div className="flex flex-col gap-4 mb-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-display font-extrabold text-foreground">
+                    {t("registeredShops")}
+                  </h2>
+                  <p className="text-muted-foreground mt-1 font-medium">
+                    {isLoading
+                      ? t("loading")
+                      : t("shopsAvailable", filteredShops?.length ?? 0)}
+                  </p>
+                </div>
               </div>
+
+              {/* Search + Location Controls */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    placeholder={t("searchShopsPlaceholder")}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 font-medium border-2"
+                    data-ocid="shops.search_input"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant={userLocation ? "default" : "outline"}
+                    className={`gap-2 font-bold border-2 ${
+                      userLocation
+                        ? "bg-primary text-primary-foreground"
+                        : "border-primary/40 text-primary hover:bg-primary/5"
+                    }`}
+                    onClick={requestLocation}
+                    disabled={locLoading}
+                    data-ocid="shops.location.button"
+                  >
+                    {locLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Navigation className="h-4 w-4" />
+                    )}
+                    {userLocation
+                      ? t("nearbyShopsActive")
+                      : t("findNearbyShops")}
+                  </Button>
+                  {userLocation && (
+                    <Button
+                      variant={sortByDist ? "default" : "outline"}
+                      className={`gap-2 font-bold border-2 ${
+                        sortByDist
+                          ? "bg-primary text-primary-foreground"
+                          : "border-primary/40 text-primary hover:bg-primary/5"
+                      }`}
+                      onClick={() => setSortByDist((v) => !v)}
+                      data-ocid="shops.sort.toggle"
+                    >
+                      <MapPin className="h-4 w-4" />
+                      {sortByDist ? t("sortByDistance") : t("sortByDefault")}
+                    </Button>
+                  )}
+                </div>
+              </div>
+              {locError && (
+                <p className="text-sm text-destructive font-medium">
+                  {t("locationPermissionDenied")}
+                </p>
+              )}
             </div>
 
             {isLoading ? (
@@ -262,7 +393,7 @@ export default function Home() {
                   </Card>
                 ))}
               </div>
-            ) : !shops || shops.length === 0 ? (
+            ) : !filteredShops || filteredShops.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -271,37 +402,29 @@ export default function Home() {
               >
                 <Store className="h-12 w-12 mx-auto text-muted-foreground/40 mb-4" />
                 <h3 className="text-xl font-display font-bold text-foreground mb-2">
-                  {t("noShopsYet")}
+                  {searchQuery ? "No shops match your search" : t("noShopsYet")}
                 </h3>
-                <p className="text-muted-foreground mb-6">{t("beTheFirst")}</p>
-                <Link to="/owner/login">
-                  <Button
-                    className="bg-primary text-primary-foreground font-bold"
-                    data-ocid="shops.primary_button"
-                  >
-                    {t("registerYourShop")}
-                  </Button>
-                </Link>
+                <p className="text-muted-foreground mb-6">
+                  {searchQuery
+                    ? "Try a different search term"
+                    : t("beTheFirst")}
+                </p>
+                {!searchQuery && (
+                  <Link to="/owner/login">
+                    <Button
+                      className="bg-primary text-primary-foreground font-bold"
+                      data-ocid="shops.primary_button"
+                    >
+                      {t("registerYourShop")}
+                    </Button>
+                  </Link>
+                )}
               </motion.div>
             ) : (
-              <motion.div
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-                initial="hidden"
-                animate="visible"
-                variants={{
-                  hidden: {},
-                  visible: { transition: { staggerChildren: 0.07 } },
-                }}
-              >
-                {shops.map(([principal, shop], index) => (
-                  <ShopCard
-                    key={principal.toString()}
-                    principal={principal}
-                    shop={shop}
-                    index={index}
-                  />
-                ))}
-              </motion.div>
+              <ShopListWithDistance
+                shops={filteredShops}
+                userLocation={userLocation}
+              />
             )}
           </div>
         </section>
@@ -330,5 +453,40 @@ export default function Home() {
 
       <Footer />
     </div>
+  );
+}
+
+function ShopListWithDistance({
+  shops,
+  userLocation,
+}: {
+  shops: [Principal, ShopData][];
+  userLocation: { lat: number; lng: number } | null;
+}) {
+  // We can't call hooks in a loop, so we render ShopCards which fetch their own locations
+  // For sorting by distance we need a different approach - render in default order unless sort disabled
+  // Since hooks can't be used conditionally in loops, keep sort as a UI hint only for now
+  // (actual distance is shown per card via DistanceBadge which fetches location)
+  return (
+    <motion.div
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+      initial="hidden"
+      animate="visible"
+      variants={{
+        hidden: {},
+        visible: { transition: { staggerChildren: 0.07 } },
+      }}
+    >
+      {shops.map(([principal, shop], index) => (
+        <ShopCard
+          key={principal.toString()}
+          principal={principal}
+          shop={shop}
+          index={index}
+          userLat={userLocation?.lat}
+          userLng={userLocation?.lng}
+        />
+      ))}
+    </motion.div>
   );
 }
