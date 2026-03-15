@@ -167,7 +167,7 @@ export default function ShopDetail() {
                   {t("orderConfirmed")}
                 </CardTitle>
                 <p className="text-muted-foreground text-sm font-medium">
-                  {t("orderPlacedAt")(confirmedOrder.shopName)}
+                  {t("orderPlacedAt", confirmedOrder.shopName)}
                 </p>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -448,7 +448,8 @@ export default function ShopDetail() {
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1 font-medium">
-                          {t("itemsSelected")(
+                          {t(
+                            "itemsSelected",
                             Object.values(quantities).filter((q) => q > 0)
                               .length,
                           )}

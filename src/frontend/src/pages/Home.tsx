@@ -218,7 +218,7 @@ export default function Home() {
                 <p className="text-muted-foreground mt-1 font-medium">
                   {isLoading
                     ? t("loading")
-                    : t("shopsAvailable")(shops?.length ?? 0)}
+                    : t("shopsAvailable", shops?.length ?? 0)}
                 </p>
               </div>
             </div>
