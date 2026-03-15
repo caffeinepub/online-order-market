@@ -42,6 +42,14 @@ const routeTree = rootRoute.addChildren([
 
 const router = createRouter({ routeTree });
 
+// Apply saved theme before React renders to avoid flash
+try {
+  const savedTheme = localStorage.getItem("theme");
+  if (savedTheme === "dark") {
+    document.documentElement.classList.add("dark");
+  }
+} catch {}
+
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;

@@ -1,15 +1,25 @@
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Loader2, LogIn, LogOut, ShoppingBag, Store } from "lucide-react";
+import {
+  Loader2,
+  LogIn,
+  LogOut,
+  Moon,
+  ShoppingBag,
+  Store,
+  Sun,
+} from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { useTheme } from "../hooks/useTheme";
 
 export default function Header() {
   const { identity, login, clear, isLoggingIn } = useInternetIdentity();
   const queryClient = useQueryClient();
   const isAuthenticated = !!identity;
   const { lang, setLang, t } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
 
   const handleAuth = async () => {
     if (isAuthenticated) {
@@ -69,6 +79,26 @@ export default function Header() {
                 SW
               </button>
             </div>
+
+            {/* Theme toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              className="text-muted-foreground hover:text-foreground"
+              data-ocid="nav.toggle"
+              aria-label={
+                theme === "dark"
+                  ? "Switch to light mode"
+                  : "Switch to dark mode"
+              }
+            >
+              {theme === "dark" ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+            </Button>
 
             <Link to="/" data-ocid="nav.link">
               <Button

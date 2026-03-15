@@ -13,10 +13,8 @@ import {
   CheckCircle,
   Loader2,
   MapPin,
-  Minus,
   Package,
   Phone,
-  Plus,
   ShoppingCart,
   Store,
   User,
@@ -70,28 +68,19 @@ export default function ShopDetail() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  // quantityText: free-text amount written by customer per product
+  const [quantityText, setQuantityText] = useState<Record<string, string>>({});
   const [orderConfirmed, setOrderConfirmed] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState<any>(null);
-
-  const totalPrice = (products ?? []).reduce((sum, p) => {
-    return sum + (quantities[p.name] ?? 0) * p.price;
-  }, 0);
-
-  const handleQty = (name: string, delta: number) => {
-    setQuantities((prev) => ({
-      ...prev,
-      [name]: Math.max(0, (prev[name] ?? 0) + delta),
-    }));
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const items = (products ?? [])
-      .filter((p) => (quantities[p.name] ?? 0) > 0)
+      .filter((p) => (quantityText[p.name] ?? "").trim() !== "")
       .map((p) => ({
-        productName: p.name,
-        quantity: BigInt(quantities[p.name] ?? 0),
+        // Encode the text quantity into the productName so it's visible to the shop owner
+        productName: `${p.name} (${quantityText[p.name].trim()})`,
+        quantity: BigInt(1),
         unitPrice: p.price,
       }));
 
@@ -104,6 +93,10 @@ export default function ShopDetail() {
       toast.error("Please enter a valid 10-digit phone number");
       return;
     }
+
+    const totalPrice = (products ?? []).reduce((sum, p) => {
+      return (quantityText[p.name] ?? "").trim() !== "" ? sum + p.price : sum;
+    }, 0);
 
     const order = {
       customerName,
@@ -352,47 +345,53 @@ export default function ShopDetail() {
                 {t("products")}
               </h2>
               {!products || products.length === 0 ? (
-                <div className="py-12 text-center border-2 border-dashed rounded-xl text-muted-foreground">
+                <div
+                  className="py-12 text-center border-2 border-dashed rounded-xl text-muted-foreground"
+                  data-ocid="products.empty_state"
+                >
                   <Package className="h-10 w-10 mx-auto mb-3 opacity-30" />
                   <p className="font-medium">{t("noProductsListed")}</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {products.map((product) => (
+                <div className="space-y-3" data-ocid="products.list">
+                  {products.map((product, idx) => (
                     <Card
                       key={product.name}
                       className="border-2 border-border hover:border-primary/40 transition-colors"
+                      data-ocid={`products.item.${idx + 1}`}
                     >
-                      <CardContent className="py-3 flex items-center justify-between">
-                        <div>
-                          <span className="font-bold text-sm">
-                            {product.name}
-                          </span>
-                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
-                            TSh {product.price.toLocaleString()}
-                          </span>
+                      <CardContent className="py-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="font-bold text-sm">
+                              {product.name}
+                            </span>
+                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                              TSh {product.price.toLocaleString()}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="h-7 w-7 border-2"
-                            onClick={() => handleQty(product.name, -1)}
-                            disabled={(quantities[product.name] ?? 0) === 0}
+                        {/* Quantity text input written by customer */}
+                        <div className="space-y-1">
+                          <Label
+                            htmlFor={`qty-${product.name}`}
+                            className="text-xs font-bold text-muted-foreground"
                           >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="w-6 text-center font-bold text-sm">
-                            {quantities[product.name] ?? 0}
-                          </span>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="h-7 w-7 border-2"
-                            onClick={() => handleQty(product.name, 1)}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
+                            Kiasi / Quantity
+                          </Label>
+                          <Input
+                            id={`qty-${product.name}`}
+                            placeholder="Mfano: kilo moja na robo, lita 2..."
+                            value={quantityText[product.name] ?? ""}
+                            onChange={(e) =>
+                              setQuantityText((prev) => ({
+                                ...prev,
+                                [product.name]: e.target.value,
+                              }))
+                            }
+                            className="h-8 text-sm font-medium border-2 border-blue-200 focus:border-blue-500"
+                            data-ocid={`products.input.${idx + 1}`}
+                          />
                         </div>
                       </CardContent>
                     </Card>
@@ -467,23 +466,38 @@ export default function ShopDetail() {
                       />
                     </div>
 
-                    {totalPrice > 0 && (
+                    {/* Summary of selected items */}
+                    {Object.values(quantityText).some(
+                      (v) => v.trim() !== "",
+                    ) && (
                       <div className="bg-primary/5 rounded-lg p-3 border-2 border-primary/20">
-                        <div className="flex justify-between items-center">
-                          <span className="font-bold text-sm">
-                            {t("total")}
-                          </span>
-                          <span className="font-extrabold text-primary text-lg">
-                            TSh {totalPrice.toLocaleString()}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1 font-medium">
+                        <p className="font-bold text-sm mb-2">
                           {t(
                             "itemsSelected",
-                            Object.values(quantities).filter((q) => q > 0)
-                              .length,
+                            Object.values(quantityText).filter(
+                              (v) => v.trim() !== "",
+                            ).length,
                           )}
                         </p>
+                        <div className="space-y-1">
+                          {(products ?? [])
+                            .filter(
+                              (p) => (quantityText[p.name] ?? "").trim() !== "",
+                            )
+                            .map((p) => (
+                              <div
+                                key={p.name}
+                                className="flex justify-between text-xs"
+                              >
+                                <span className="font-medium text-muted-foreground">
+                                  {p.name}
+                                </span>
+                                <span className="font-bold text-foreground">
+                                  {quantityText[p.name]}
+                                </span>
+                              </div>
+                            ))}
+                        </div>
                       </div>
                     )}
 

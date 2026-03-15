@@ -75,9 +75,11 @@ export function useRegisterShop() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (shopData: ShopData) => {
-      if (!actor) throw new Error("Not connected");
+      if (!actor)
+        throw new Error("Not connected. Please log in and try again.");
       return actor.registerShop(shopData);
     },
+    retry: 2,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["allShops"] });
       queryClient.invalidateQueries({ queryKey: ["myShop"] });
@@ -90,11 +92,14 @@ export function useUpdateShop() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (shopData: ShopData) => {
-      if (!actor) throw new Error("Not connected");
+      if (!actor)
+        throw new Error("Not connected. Please log in and try again.");
       return actor.updateShop(shopData);
     },
+    retry: 2,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["allShops"] });
+      queryClient.invalidateQueries({ queryKey: ["myShop"] });
     },
   });
 }
@@ -104,9 +109,11 @@ export function useAddProduct() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (product: Product) => {
-      if (!actor) throw new Error("Not connected");
+      if (!actor)
+        throw new Error("Not connected. Please log in and try again.");
       return actor.addProduct(product);
     },
+    retry: 2,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
     },
@@ -118,9 +125,11 @@ export function useUpdateProduct() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (product: Product) => {
-      if (!actor) throw new Error("Not connected");
+      if (!actor)
+        throw new Error("Not connected. Please log in and try again.");
       return actor.updateProduct(product);
     },
+    retry: 2,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
     },
@@ -132,7 +141,8 @@ export function useDeleteProduct() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (productName: string) => {
-      if (!actor) throw new Error("Not connected");
+      if (!actor)
+        throw new Error("Not connected. Please log in and try again.");
       return actor.deleteProduct(productName);
     },
     onSuccess: () => {

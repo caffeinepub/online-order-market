@@ -147,7 +147,18 @@ export default function OwnerDashboard() {
       return;
     }
     try {
-      await uploadPhoto(ownerPrincipal, file);
+      const dataUrl = await uploadPhoto(ownerPrincipal, file);
+      // Save to backend so all customers can see the photo
+      await saveSocials.mutateAsync({
+        principalId: ownerPrincipal,
+        socials: {
+          facebook: socialForm.facebook,
+          instagram: socialForm.instagram,
+          tiktok: socialForm.tiktok,
+          photoUrl: dataUrl,
+        },
+      });
+      setSocialForm((prev) => ({ ...prev, photoUrl: dataUrl }));
       toast.success(t("photoUploaded"));
     } catch {
       toast.error("Failed to save photo.");

@@ -70,6 +70,55 @@
     --sidebar-ring: 0.48 0.18 250;
   }
 
+  .dark {
+    /* Dark navy/slate blue theme */
+    --background: 0.18 0.03 255;
+    --foreground: 0.96 0.005 240;
+
+    --card: 0.22 0.04 255;
+    --card-foreground: 0.96 0.005 240;
+
+    --popover: 0.22 0.04 255;
+    --popover-foreground: 0.96 0.005 240;
+
+    --primary: 0.65 0.16 250;
+    --primary-foreground: 0.12 0.02 255;
+
+    --secondary: 0.28 0.05 255;
+    --secondary-foreground: 0.92 0.01 240;
+
+    --muted: 0.26 0.04 255;
+    --muted-foreground: 0.65 0.04 245;
+
+    --accent: 0.55 0.14 250;
+    --accent-foreground: 0.96 0.005 240;
+
+    --destructive: 0.45 0.20 27;
+    --destructive-foreground: 0.96 0.005 240;
+
+    --border: 0.32 0.05 255;
+    --input: 0.32 0.05 255;
+    --ring: 0.65 0.16 250;
+
+    --success: 0.55 0.13 145;
+    --success-foreground: 0.96 0.005 240;
+
+    --chart-1: 0.65 0.16 250;
+    --chart-2: 0.60 0.14 220;
+    --chart-3: 0.55 0.12 260;
+    --chart-4: 0.70 0.16 200;
+    --chart-5: 0.60 0.18 240;
+
+    --sidebar: 0.20 0.035 255;
+    --sidebar-foreground: 0.96 0.005 240;
+    --sidebar-primary: 0.65 0.16 250;
+    --sidebar-primary-foreground: 0.12 0.02 255;
+    --sidebar-accent: 0.28 0.05 255;
+    --sidebar-accent-foreground: 0.92 0.01 240;
+    --sidebar-border: 0.32 0.05 255;
+    --sidebar-ring: 0.65 0.16 250;
+  }
+
   * {
     @apply border-border;
   }
@@ -97,9 +146,22 @@
       oklch(0.92 0.08 250) 100%
     );
   }
+  .dark .market-gradient {
+    background: linear-gradient(
+      135deg,
+      oklch(0.20 0.05 255) 0%,
+      oklch(0.24 0.06 250) 50%,
+      oklch(0.18 0.04 260) 100%
+    );
+  }
   .hero-texture {
     background-image:
       radial-gradient(ellipse at 20% 50%, oklch(0.75 0.14 250 / 0.25) 0%, transparent 60%),
       radial-gradient(ellipse at 80% 20%, oklch(0.65 0.18 245 / 0.15) 0%, transparent 50%);
+  }
+  .dark .hero-texture {
+    background-image:
+      radial-gradient(ellipse at 20% 50%, oklch(0.45 0.14 250 / 0.20) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, oklch(0.35 0.18 245 / 0.15) 0%, transparent 50%);
   }
 }
