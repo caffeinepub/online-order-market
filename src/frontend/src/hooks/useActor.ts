@@ -27,21 +27,18 @@ export function useActor() {
 
       const actor = await createActorWithConfig(actorOptions);
 
-      // Only call admin init when the admin token is actually present in the URL.
-      // For regular shop owners this call is not needed and must not block actor creation.
+      // IMPORTANT: Only call _initializeAccessControlWithSecret when a real
+      // admin token is present in the URL. Calling it with an empty string
+      // causes the backend to throw an error which silently breaks the actor
+      // for ALL users (shop owners, customers). Regular users MUST NOT call
+      // this function at all.
       const adminToken = getSecretParameter("caffeineAdminToken");
-      if (adminToken) {
+      if (adminToken && adminToken.trim().length > 0) {
         try {
           await actor._initializeAccessControlWithSecret(adminToken);
-        } catch (_e) {
-          // Non-fatal: admin token call failed, continue as regular user
-        }
-      } else {
-        // Register this user without an admin token so the backend knows them
-        try {
-          await actor._initializeAccessControlWithSecret("");
-        } catch (_e) {
-          // Non-fatal: continue even if this fails
+        } catch (e) {
+          // Admin init failed — log but do NOT break the actor for regular users
+          console.warn("Admin init failed (non-fatal):", e);
         }
       }
 
@@ -50,8 +47,6 @@ export function useActor() {
     // Only refetch when identity changes
     staleTime: Number.POSITIVE_INFINITY,
     enabled: true,
-    retry: 3,
-    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
 
   // When the actor changes, invalidate dependent queries
