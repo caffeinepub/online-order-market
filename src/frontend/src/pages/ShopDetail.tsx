@@ -345,7 +345,7 @@ export default function ShopDetail() {
                             {product.name}
                           </span>
                           <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
-                            ${product.price.toFixed(2)}
+                            TSh {product.price.toLocaleString()}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -444,7 +444,7 @@ export default function ShopDetail() {
                             {t("total")}
                           </span>
                           <span className="font-extrabold text-primary text-lg">
-                            ${totalPrice.toFixed(2)}
+                            TSh {totalPrice.toLocaleString()}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1 font-medium">

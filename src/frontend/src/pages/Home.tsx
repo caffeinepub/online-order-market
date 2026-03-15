@@ -86,18 +86,23 @@ function ShopCard({
           </div>
         </CardContent>
         {hasSocials && (
-          <div className="px-6 pb-3 flex items-center gap-2">
+          <div className="px-4 pb-3 flex flex-wrap items-center gap-2">
             {socials.facebook && (
               <a
                 href={socials.facebook}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
+                data-ocid="shop.facebook.button"
               >
-                <FaFacebook
-                  className="h-4 w-4 hover:opacity-75 transition-opacity"
-                  style={{ color: "#1877F2" }}
-                />
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold text-white shadow hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: "#1877F2" }}
+                >
+                  <FaFacebook className="h-3 w-3" />
+                  Facebook
+                </button>
               </a>
             )}
             {socials.instagram && (
@@ -106,11 +111,15 @@ function ShopCard({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
+                data-ocid="shop.instagram.button"
               >
-                <FaInstagram
-                  className="h-4 w-4 hover:opacity-75 transition-opacity"
-                  style={{ color: "#E1306C" }}
-                />
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold text-white shadow hover:opacity-90 transition-opacity bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400"
+                >
+                  <FaInstagram className="h-3 w-3" />
+                  Instagram
+                </button>
               </a>
             )}
             {socials.tiktok && (
@@ -119,8 +128,16 @@ function ShopCard({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
+                data-ocid="shop.tiktok.button"
               >
-                <FaTiktok className="h-4 w-4 hover:opacity-75 transition-opacity text-foreground" />
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold text-white shadow hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: "#010101" }}
+                >
+                  <FaTiktok className="h-3 w-3" />
+                  TikTok
+                </button>
               </a>
             )}
           </div>
