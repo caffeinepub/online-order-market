@@ -22,6 +22,7 @@ import {
   Camera,
   CheckCircle,
   Clock,
+  ImagePlus,
   Loader2,
   LogOut,
   MapPin,
@@ -101,6 +102,8 @@ export default function OwnerDashboard() {
   const photoUrl = useShopPhotoReactive(ownerPrincipal);
   const { uploadPhoto, isUploading } = useUploadShopPhoto();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const productFileInputRef = useRef<HTMLInputElement>(null);
+  const editProductFileInputRef = useRef<HTMLInputElement>(null);
 
   // Active tab tracking
   const myShop =
@@ -249,6 +252,46 @@ export default function OwnerDashboard() {
 
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
   const [editProductPrice, setEditProductPrice] = useState("");
+  const [newProductPhotoUrl, setNewProductPhotoUrl] = useState("");
+  const [newProductPhotoUploading, setNewProductPhotoUploading] =
+    useState(false);
+  const [editProductPhotoUrl, setEditProductPhotoUrl] = useState("");
+  const [editProductPhotoUploading, setEditProductPhotoUploading] =
+    useState(false);
+
+  const handleProductPhotoSelect = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    mode: "add" | "edit",
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Photo must be under 5MB");
+      return;
+    }
+    const setter =
+      mode === "add"
+        ? setNewProductPhotoUploading
+        : setEditProductPhotoUploading;
+    const urlSetter =
+      mode === "add" ? setNewProductPhotoUrl : setEditProductPhotoUrl;
+    setter(true);
+    try {
+      const { createStorageClient } = await import(
+        "../utils/createStorageClient"
+      );
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const storageClient = await createStorageClient(identity);
+      const { hash } = await storageClient.putFile(bytes);
+      const url = await storageClient.getDirectURL(hash);
+      urlSetter(url);
+      toast.success("Photo uploaded!");
+    } catch {
+      toast.error("Failed to upload photo");
+    } finally {
+      setter(false);
+    }
+  };
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -257,9 +300,11 @@ export default function OwnerDashboard() {
       await addProduct.mutateAsync({
         name: newProductName.trim(),
         price: Number.parseFloat(newProductPrice),
+        photoUrl: newProductPhotoUrl,
       });
       setNewProductName("");
       setNewProductPrice("");
+      setNewProductPhotoUrl("");
       toast.success(t("productAdded"));
     } catch {
       toast.error(t("productAddError"));
@@ -271,8 +316,10 @@ export default function OwnerDashboard() {
       await updateProduct.mutateAsync({
         name,
         price: Number.parseFloat(editProductPrice),
+        photoUrl: editProductPhotoUrl,
       });
       setEditingProduct(null);
+      setEditProductPhotoUrl("");
       toast.success(t("productUpdated"));
     } catch {
       toast.error(t("productUpdateError"));
@@ -579,44 +626,92 @@ export default function OwnerDashboard() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <form
-                      onSubmit={handleAddProduct}
-                      className="flex gap-3 flex-wrap sm:flex-nowrap"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <Input
-                          placeholder={t("productName")}
-                          value={newProductName}
-                          onChange={(e) => setNewProductName(e.target.value)}
-                          required
-                          data-ocid="product.input"
-                        />
+                    <form onSubmit={handleAddProduct} className="space-y-3">
+                      <div className="flex gap-3 flex-wrap sm:flex-nowrap">
+                        <div className="flex-1 min-w-0">
+                          <Input
+                            placeholder={t("productName")}
+                            value={newProductName}
+                            onChange={(e) => setNewProductName(e.target.value)}
+                            required
+                            data-ocid="product.input"
+                          />
+                        </div>
+                        <div className="w-32">
+                          <Input
+                            placeholder={t("price")}
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={newProductPrice}
+                            onChange={(e) => setNewProductPrice(e.target.value)}
+                            required
+                            data-ocid="product.input"
+                          />
+                        </div>
                       </div>
-                      <div className="w-32">
-                        <Input
-                          placeholder={t("price")}
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={newProductPrice}
-                          onChange={(e) => setNewProductPrice(e.target.value)}
-                          required
-                          data-ocid="product.input"
+                      {/* Product Photo Upload */}
+                      <div className="flex items-center gap-3">
+                        <input
+                          ref={productFileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleProductPhotoSelect(e, "add")}
                         />
-                      </div>
-                      <Button
-                        type="submit"
-                        disabled={addProduct.isPending}
-                        className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 font-bold"
-                        data-ocid="product.primary_button"
-                      >
-                        {addProduct.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                        {newProductPhotoUrl ? (
+                          <div className="flex items-center gap-2">
+                            <img
+                              src={newProductPhotoUrl}
+                              alt="Product preview"
+                              className="w-12 h-12 object-cover rounded-lg border-2 border-primary/30"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs text-muted-foreground"
+                              onClick={() => setNewProductPhotoUrl("")}
+                            >
+                              Remove photo
+                            </Button>
+                          </div>
                         ) : (
-                          <Plus className="h-4 w-4" />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="gap-2 border-dashed border-2 font-medium text-muted-foreground"
+                            onClick={() => productFileInputRef.current?.click()}
+                            disabled={newProductPhotoUploading}
+                            data-ocid="product.upload_button"
+                          >
+                            {newProductPhotoUploading ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <ImagePlus className="h-4 w-4" />
+                            )}
+                            {newProductPhotoUploading
+                              ? "Uploading..."
+                              : "Add Photo (optional)"}
+                          </Button>
                         )}
-                        {t("add")}
-                      </Button>
+                        <Button
+                          type="submit"
+                          disabled={
+                            addProduct.isPending || newProductPhotoUploading
+                          }
+                          className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 font-bold ml-auto"
+                          data-ocid="product.primary_button"
+                        >
+                          {addProduct.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Plus className="h-4 w-4" />
+                          )}
+                          {t("add")}
+                        </Button>
+                      </div>
                     </form>
                   </CardContent>
                 </Card>
@@ -648,9 +743,23 @@ export default function OwnerDashboard() {
                       >
                         <Card className="border-2 border-border shadow-sm hover:shadow-md transition-shadow">
                           <CardContent className="py-3 flex items-center gap-3">
+                            {/* Product Photo Thumbnail */}
+                            <div className="w-12 h-12 rounded-lg border-2 border-border overflow-hidden bg-muted/50 flex-shrink-0">
+                              {product.photoUrl ? (
+                                <img
+                                  src={product.photoUrl}
+                                  alt={product.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Package className="h-5 w-5 text-muted-foreground/30" />
+                                </div>
+                              )}
+                            </div>
                             {editingProduct === product.name ? (
-                              <div className="flex-1 flex items-center gap-2">
-                                <span className="font-bold text-sm flex-1">
+                              <div className="flex-1 flex flex-wrap items-center gap-2">
+                                <span className="font-bold text-sm flex-1 min-w-0 truncate">
                                   {product.name}
                                 </span>
                                 <Input
@@ -664,12 +773,49 @@ export default function OwnerDashboard() {
                                   className="w-24"
                                   data-ocid={`products.item.${index + 1}.input`}
                                 />
+                                {/* Edit photo */}
+                                <input
+                                  ref={editProductFileInputRef}
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) =>
+                                    handleProductPhotoSelect(e, "edit")
+                                  }
+                                />
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1 font-medium border-dashed text-xs"
+                                  onClick={() =>
+                                    editProductFileInputRef.current?.click()
+                                  }
+                                  disabled={editProductPhotoUploading}
+                                >
+                                  {editProductPhotoUploading ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <ImagePlus className="h-3 w-3" />
+                                  )}
+                                  {editProductPhotoUrl ? "Change" : "Photo"}
+                                </Button>
+                                {editProductPhotoUrl && (
+                                  <img
+                                    src={editProductPhotoUrl}
+                                    alt="preview"
+                                    className="w-8 h-8 rounded object-cover border"
+                                  />
+                                )}
                                 <Button
                                   size="sm"
                                   onClick={() =>
                                     handleUpdateProduct(product.name)
                                   }
-                                  disabled={updateProduct.isPending}
+                                  disabled={
+                                    updateProduct.isPending ||
+                                    editProductPhotoUploading
+                                  }
                                   className="bg-primary text-primary-foreground font-bold"
                                   data-ocid={`products.item.${index + 1}.save_button`}
                                 >
@@ -697,6 +843,11 @@ export default function OwnerDashboard() {
                                   <span className="ml-3 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
                                     TSh {product.price.toLocaleString()}
                                   </span>
+                                  {product.photoUrl && (
+                                    <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs text-green-700 bg-green-50 border border-green-200 font-medium">
+                                      📷
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <Button
@@ -707,6 +858,9 @@ export default function OwnerDashboard() {
                                       setEditingProduct(product.name);
                                       setEditProductPrice(
                                         product.price.toString(),
+                                      );
+                                      setEditProductPhotoUrl(
+                                        product.photoUrl || "",
                                       );
                                     }}
                                     data-ocid={`products.item.${index + 1}.edit_button`}

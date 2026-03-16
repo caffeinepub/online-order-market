@@ -3,6 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -68,21 +75,69 @@ export default function ShopDetail() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
-  // quantityText: free-text amount written by customer per product
-  const [quantityText, setQuantityText] = useState<Record<string, string>>({});
+  // quantityPreset: selected Swahili preset per product
+  const [quantityPreset, setQuantityPreset] = useState<Record<string, string>>(
+    {},
+  );
+  // quantityCustom: free text override
+  const [quantityCustom, setQuantityCustom] = useState<Record<string, string>>(
+    {},
+  );
   const [orderConfirmed, setOrderConfirmed] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState<any>(null);
+
+  const QUANTITY_OPTIONS: { label: string; multiplier: number }[] = [
+    { label: "robo", multiplier: 0.25 },
+    { label: "nusu", multiplier: 0.5 },
+    { label: "robo tatu", multiplier: 0.75 },
+    { label: "kilo moja", multiplier: 1 },
+    { label: "kilo mbili", multiplier: 2 },
+    { label: "kilo tatu", multiplier: 3 },
+    { label: "kilo nne", multiplier: 4 },
+    { label: "kilo tano", multiplier: 5 },
+  ];
+
+  function getQuantityMultiplier(preset: string): number {
+    return QUANTITY_OPTIONS.find((o) => o.label === preset)?.multiplier ?? 1;
+  }
+
+  function getEffectiveQuantityText(
+    productName: string,
+    preset: Record<string, string>,
+    custom: Record<string, string>,
+  ): string {
+    const c = (custom[productName] ?? "").trim();
+    if (c) return c;
+    return preset[productName] ?? "";
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const items = (products ?? [])
-      .filter((p) => (quantityText[p.name] ?? "").trim() !== "")
-      .map((p) => ({
-        // Encode the text quantity into the productName so it's visible to the shop owner
-        productName: `${p.name} (${quantityText[p.name].trim()})`,
-        quantity: BigInt(1),
-        unitPrice: p.price,
-      }));
+      .filter((p) => {
+        const qText = getEffectiveQuantityText(
+          p.name,
+          quantityPreset,
+          quantityCustom,
+        );
+        return qText !== "";
+      })
+      .map((p) => {
+        const qText = getEffectiveQuantityText(
+          p.name,
+          quantityPreset,
+          quantityCustom,
+        );
+        const multiplier = (quantityCustom[p.name] ?? "").trim()
+          ? 1
+          : getQuantityMultiplier(quantityPreset[p.name] ?? "kilo moja");
+        return {
+          productName: p.name,
+          quantityText: qText,
+          quantity: BigInt(1),
+          unitPrice: p.price * multiplier,
+        };
+      });
 
     if (items.length === 0) {
       toast.error(t("selectAtLeastOne"));
@@ -94,9 +149,7 @@ export default function ShopDetail() {
       return;
     }
 
-    const totalPrice = (products ?? []).reduce((sum, p) => {
-      return (quantityText[p.name] ?? "").trim() !== "" ? sum + p.price : sum;
-    }, 0);
+    const totalPrice = items.reduce((sum, item) => sum + item.unitPrice, 0);
 
     const order = {
       customerName,
@@ -361,35 +414,91 @@ export default function ShopDetail() {
                       data-ocid={`products.item.${idx + 1}`}
                     >
                       <CardContent className="py-3 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="font-bold text-sm">
-                              {product.name}
-                            </span>
-                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
-                              TSh {product.price.toLocaleString()}
-                            </span>
+                        <div className="flex items-start gap-3">
+                          {product.photoUrl ? (
+                            <img
+                              src={product.photoUrl}
+                              alt={product.name}
+                              className="w-14 h-14 object-cover rounded-lg border-2 border-border flex-shrink-0"
+                            />
+                          ) : null}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center flex-wrap gap-2">
+                              <span className="font-bold text-sm">
+                                {product.name}
+                              </span>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                                TSh {product.price.toLocaleString()}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                        {/* Quantity text input written by customer */}
-                        <div className="space-y-1">
-                          <Label
-                            htmlFor={`qty-${product.name}`}
-                            className="text-xs font-bold text-muted-foreground"
-                          >
+                        {/* Swahili quantity picker */}
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-bold text-muted-foreground">
                             Kiasi / Quantity
                           </Label>
+                          <Select
+                            value={quantityPreset[product.name] ?? ""}
+                            onValueChange={(val) => {
+                              setQuantityPreset((prev) => ({
+                                ...prev,
+                                [product.name]: val,
+                              }));
+                              setQuantityCustom((prev) => ({
+                                ...prev,
+                                [product.name]: "",
+                              }));
+                            }}
+                          >
+                            <SelectTrigger
+                              className="h-8 text-sm font-medium border-2 border-blue-200 focus:border-blue-500"
+                              data-ocid={`products.select.${idx + 1}`}
+                            >
+                              <SelectValue placeholder="Chagua kiasi..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {QUANTITY_OPTIONS.map((opt) => (
+                                <SelectItem key={opt.label} value={opt.label}>
+                                  <span className="font-bold">{opt.label}</span>
+                                  <span className="ml-2 text-muted-foreground text-xs">
+                                    — TSh{" "}
+                                    {(
+                                      product.price * opt.multiplier
+                                    ).toLocaleString()}
+                                  </span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {quantityPreset[product.name] &&
+                            !(quantityCustom[product.name] ?? "").trim() && (
+                              <p className="text-xs font-bold text-primary">
+                                Bei: TSh{" "}
+                                {(
+                                  product.price *
+                                  getQuantityMultiplier(
+                                    quantityPreset[product.name],
+                                  )
+                                ).toLocaleString()}
+                              </p>
+                            )}
                           <Input
-                            id={`qty-${product.name}`}
-                            placeholder="Mfano: kilo moja na robo, lita 2..."
-                            value={quantityText[product.name] ?? ""}
-                            onChange={(e) =>
-                              setQuantityText((prev) => ({
+                            placeholder="Au andika kiasi chako mwenyewe..."
+                            value={quantityCustom[product.name] ?? ""}
+                            onChange={(e) => {
+                              setQuantityCustom((prev) => ({
                                 ...prev,
                                 [product.name]: e.target.value,
-                              }))
-                            }
-                            className="h-8 text-sm font-medium border-2 border-blue-200 focus:border-blue-500"
+                              }));
+                              if (e.target.value) {
+                                setQuantityPreset((prev) => ({
+                                  ...prev,
+                                  [product.name]: "",
+                                }));
+                              }
+                            }}
+                            className="h-7 text-xs font-medium border border-blue-200 focus:border-blue-500"
                             data-ocid={`products.input.${idx + 1}`}
                           />
                         </div>
@@ -466,37 +575,87 @@ export default function ShopDetail() {
                       />
                     </div>
 
-                    {/* Summary of selected items */}
-                    {Object.values(quantityText).some(
-                      (v) => v.trim() !== "",
+                    {/* Order summary */}
+                    {(products ?? []).some(
+                      (p) =>
+                        getEffectiveQuantityText(
+                          p.name,
+                          quantityPreset,
+                          quantityCustom,
+                        ) !== "",
                     ) && (
                       <div className="bg-primary/5 rounded-lg p-3 border-2 border-primary/20">
                         <p className="font-bold text-sm mb-2">
-                          {t(
-                            "itemsSelected",
-                            Object.values(quantityText).filter(
-                              (v) => v.trim() !== "",
-                            ).length,
-                          )}
+                          Muhtasari wa Agizo:
                         </p>
                         <div className="space-y-1">
                           {(products ?? [])
                             .filter(
-                              (p) => (quantityText[p.name] ?? "").trim() !== "",
+                              (p) =>
+                                getEffectiveQuantityText(
+                                  p.name,
+                                  quantityPreset,
+                                  quantityCustom,
+                                ) !== "",
                             )
-                            .map((p) => (
-                              <div
-                                key={p.name}
-                                className="flex justify-between text-xs"
-                              >
-                                <span className="font-medium text-muted-foreground">
-                                  {p.name}
-                                </span>
-                                <span className="font-bold text-foreground">
-                                  {quantityText[p.name]}
-                                </span>
-                              </div>
-                            ))}
+                            .map((p) => {
+                              const qText = getEffectiveQuantityText(
+                                p.name,
+                                quantityPreset,
+                                quantityCustom,
+                              );
+                              const isCustom =
+                                (quantityCustom[p.name] ?? "").trim() !== "";
+                              const multiplier = isCustom
+                                ? 1
+                                : getQuantityMultiplier(
+                                    quantityPreset[p.name] ?? "kilo moja",
+                                  );
+                              const lineTotal = p.price * multiplier;
+                              return (
+                                <div
+                                  key={p.name}
+                                  className="flex justify-between text-xs"
+                                >
+                                  <span className="font-medium text-muted-foreground">
+                                    {p.name} ×{" "}
+                                    <span className="font-bold text-foreground">
+                                      {qText}
+                                    </span>
+                                  </span>
+                                  <span className="font-bold text-primary">
+                                    TSh {lineTotal.toLocaleString()}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          <div className="flex justify-between text-xs pt-1 border-t border-primary/20 mt-1">
+                            <span className="font-bold">Jumla / Total</span>
+                            <span className="font-bold text-primary">
+                              TSh{" "}
+                              {(products ?? [])
+                                .filter(
+                                  (p) =>
+                                    getEffectiveQuantityText(
+                                      p.name,
+                                      quantityPreset,
+                                      quantityCustom,
+                                    ) !== "",
+                                )
+                                .reduce((sum, p) => {
+                                  const isCustom =
+                                    (quantityCustom[p.name] ?? "").trim() !==
+                                    "";
+                                  const multiplier = isCustom
+                                    ? 1
+                                    : getQuantityMultiplier(
+                                        quantityPreset[p.name] ?? "kilo moja",
+                                      );
+                                  return sum + p.price * multiplier;
+                                }, 0)
+                                .toLocaleString()}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     )}

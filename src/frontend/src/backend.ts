@@ -101,6 +101,7 @@ export interface ShopLocation {
 }
 export interface Product {
     name: string;
+    photoUrl: string;
     price: number;
 }
 export type Time = bigint;
@@ -109,6 +110,7 @@ export interface _CaffeineStorageRefillInformation {
 }
 export interface OrderItem {
     productName: string;
+    quantityText: string;
     quantity: bigint;
     unitPrice: number;
 }
