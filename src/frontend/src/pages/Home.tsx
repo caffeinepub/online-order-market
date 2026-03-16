@@ -77,6 +77,7 @@ function ShopCard({
   const photoUrl = useShopPhoto(principal.toString());
   const socials = useShopSocials(principal.toString());
   const hasSocials = socials.facebook || socials.instagram || socials.tiktok;
+  const [photoError, setPhotoError] = useState(false);
 
   return (
     <motion.div
@@ -92,12 +93,14 @@ function ShopCard({
     >
       <Card className="h-full flex flex-col hover:shadow-xl transition-all duration-200 border-2 border-border overflow-hidden">
         {/* Banner / Photo area */}
-        {photoUrl ? (
-          <div className="h-36 overflow-hidden">
+        {photoUrl && !photoError ? (
+          <div className="h-36 overflow-hidden bg-muted">
             <img
               src={photoUrl}
               alt={shop.businessName}
               className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+              loading="lazy"
+              onError={() => setPhotoError(true)}
             />
           </div>
         ) : (
@@ -463,10 +466,6 @@ function ShopListWithDistance({
   shops: [Principal, ShopData][];
   userLocation: { lat: number; lng: number } | null;
 }) {
-  // We can't call hooks in a loop, so we render ShopCards which fetch their own locations
-  // For sorting by distance we need a different approach - render in default order unless sort disabled
-  // Since hooks can't be used conditionally in loops, keep sort as a UI hint only for now
-  // (actual distance is shown per card via DistanceBadge which fetches location)
   return (
     <motion.div
       className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"

@@ -26,22 +26,13 @@ export function useActor() {
       };
 
       const actor = await createActorWithConfig(actorOptions);
-
-      // Only run admin setup if a real admin token is present in the URL.
-      // Never call this for regular shop owners -- it will break their actor.
-      const adminToken = getSecretParameter("caffeineAdminToken");
-      if (adminToken && adminToken.trim().length > 0) {
-        try {
-          await actor._initializeAccessControlWithSecret(adminToken);
-        } catch (_e) {
-          // Admin init failed but don't block normal users
-        }
-      }
-
+      const adminToken = getSecretParameter("caffeineAdminToken") || "";
+      await actor._initializeAccessControlWithSecret(adminToken);
       return actor;
     },
     // Only refetch when identity changes
     staleTime: Number.POSITIVE_INFINITY,
+    // This will cause the actor to be recreated when the identity changes
     enabled: true,
   });
 

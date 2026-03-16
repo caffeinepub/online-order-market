@@ -83,6 +83,10 @@ export default function ShopDetail() {
   );
   const [orderConfirmed, setOrderConfirmed] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState<any>(null);
+  const [shopPhotoError, setShopPhotoError] = useState(false);
+  const [productPhotoErrors, setProductPhotoErrors] = useState<
+    Record<string, boolean>
+  >({});
 
   const QUANTITY_OPTIONS: { label: string; multiplier: number }[] = [
     { label: "robo", multiplier: 0.25 },
@@ -292,12 +296,14 @@ export default function ShopDetail() {
 
           {/* Shop Banner */}
           <div className="mb-8">
-            {photoUrl ? (
-              <div className="w-full h-48 rounded-xl overflow-hidden mb-4 shadow-md">
+            {photoUrl && !shopPhotoError ? (
+              <div className="w-full h-48 rounded-xl overflow-hidden mb-4 shadow-md bg-muted">
                 <img
                   src={photoUrl}
                   alt={shop.businessName}
                   className="w-full h-full object-cover"
+                  loading="lazy"
+                  onError={() => setShopPhotoError(true)}
                 />
               </div>
             ) : (
@@ -412,12 +418,19 @@ export default function ShopDetail() {
                       data-ocid={`products.item.${idx + 1}`}
                     >
                       {/* Product image — full width at top */}
-                      {product.photoUrl ? (
+                      {product.photoUrl && !productPhotoErrors[product.name] ? (
                         <div className="w-full h-48 overflow-hidden bg-muted">
                           <img
                             src={product.photoUrl}
                             alt={product.name}
                             className="w-full h-full object-cover"
+                            loading="lazy"
+                            onError={() =>
+                              setProductPhotoErrors((prev) => ({
+                                ...prev,
+                                [product.name]: true,
+                              }))
+                            }
                           />
                         </div>
                       ) : (
