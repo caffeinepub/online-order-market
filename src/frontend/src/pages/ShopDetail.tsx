@@ -75,11 +75,9 @@ export default function ShopDetail() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
-  // quantityPreset: selected Swahili preset per product
   const [quantityPreset, setQuantityPreset] = useState<Record<string, string>>(
     {},
   );
-  // quantityCustom: free text override
   const [quantityCustom, setQuantityCustom] = useState<Record<string, string>>(
     {},
   );
@@ -181,7 +179,7 @@ export default function ShopDetail() {
           <Skeleton className="h-48 w-full mb-6 rounded-xl" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-20 w-full" />
+              <Skeleton key={i} className="h-52 w-full" />
             ))}
           </div>
         </main>
@@ -406,33 +404,39 @@ export default function ShopDetail() {
                   <p className="font-medium">{t("noProductsListed")}</p>
                 </div>
               ) : (
-                <div className="space-y-3" data-ocid="products.list">
+                <div className="space-y-4" data-ocid="products.list">
                   {products.map((product, idx) => (
                     <Card
                       key={product.name}
-                      className="border-2 border-border hover:border-primary/40 transition-colors"
+                      className="border-2 border-border hover:border-primary/40 transition-colors overflow-hidden"
                       data-ocid={`products.item.${idx + 1}`}
                     >
-                      <CardContent className="py-3 space-y-2">
-                        <div className="flex items-start gap-3">
-                          {product.photoUrl ? (
-                            <img
-                              src={product.photoUrl}
-                              alt={product.name}
-                              className="w-14 h-14 object-cover rounded-lg border-2 border-border flex-shrink-0"
-                            />
-                          ) : null}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center flex-wrap gap-2">
-                              <span className="font-bold text-sm">
-                                {product.name}
-                              </span>
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
-                                TSh {product.price.toLocaleString()}
-                              </span>
-                            </div>
-                          </div>
+                      {/* Product image — full width at top */}
+                      {product.photoUrl ? (
+                        <div className="w-full h-48 overflow-hidden bg-muted">
+                          <img
+                            src={product.photoUrl}
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                          />
                         </div>
+                      ) : (
+                        <div className="w-full h-32 flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
+                          <Package className="h-12 w-12 text-primary/25" />
+                        </div>
+                      )}
+
+                      <CardContent className="pt-3 pb-4 space-y-3">
+                        {/* Name + price */}
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="font-extrabold text-base text-foreground">
+                            {product.name}
+                          </span>
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-primary text-primary-foreground shadow-sm">
+                            TSh {product.price.toLocaleString()}
+                          </span>
+                        </div>
+
                         {/* Swahili quantity picker */}
                         <div className="space-y-1.5">
                           <Label className="text-xs font-bold text-muted-foreground">
