@@ -65,6 +65,7 @@ import {
   useUploadShopPhoto,
 } from "../hooks/useShopPhoto";
 import { useSaveShopSocials, useShopSocials } from "../hooks/useShopSocials";
+import { convertToJpeg } from "../utils/imageUtils";
 
 const SOUND_OPTIONS = [
   { id: "bell", label: "Bell" },
@@ -280,7 +281,9 @@ export default function OwnerDashboard() {
       const { createStorageClient } = await import(
         "../utils/createStorageClient"
       );
-      const bytes = new Uint8Array(await file.arrayBuffer());
+      // Convert to JPEG for universal device compatibility
+      const jpegFile = await convertToJpeg(file, 0.85, 1200, 1200);
+      const bytes = new Uint8Array(await jpegFile.arrayBuffer());
       const storageClient = await createStorageClient(identity);
       const { hash } = await storageClient.putFile(bytes);
       const url = await storageClient.getDirectURL(hash);
@@ -750,6 +753,7 @@ export default function OwnerDashboard() {
                                   src={product.photoUrl}
                                   alt={product.name}
                                   className="w-full h-full object-cover"
+                                  crossOrigin="anonymous"
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">

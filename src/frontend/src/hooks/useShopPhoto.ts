@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { createStorageClient } from "../utils/createStorageClient";
+import { convertToJpeg } from "../utils/imageUtils";
 import { useActor } from "./useActor";
 import { useInternetIdentity } from "./useInternetIdentity";
 import { useShopSocials } from "./useShopSocials";
@@ -33,8 +34,9 @@ export function useUploadShopPhoto() {
     async (principalId: string, file: File): Promise<string> => {
       setIsUploading(true);
       try {
-        // Convert file to bytes
-        const bytes = new Uint8Array(await file.arrayBuffer());
+        // Convert to JPEG for universal device compatibility
+        const jpegFile = await convertToJpeg(file, 0.85, 1200, 1200);
+        const bytes = new Uint8Array(await jpegFile.arrayBuffer());
 
         // Upload to blob storage using authenticated identity
         const storageClient = await createStorageClient(identity);

@@ -103,6 +103,32 @@ export default function ShopDetail() {
     return QUANTITY_OPTIONS.find((o) => o.label === preset)?.multiplier ?? 1;
   }
 
+  // Parses a number from custom quantity text, e.g. "2" -> 2, "kilo 3" -> 3, "3 kilo" -> 3
+  function parseCustomMultiplier(text: string): number | null {
+    const trimmed = text.trim();
+    if (!trimmed) return null;
+    // Extract first number (including decimals)
+    const match = trimmed.match(/[0-9]+([.,][0-9]+)?/);
+    if (match) {
+      const num = Number.parseFloat(match[0].replace(",", "."));
+      if (!Number.isNaN(num) && num > 0) return num;
+    }
+    return null;
+  }
+
+  function getEffectiveMultiplier(
+    productName: string,
+    preset: Record<string, string>,
+    custom: Record<string, string>,
+  ): number {
+    const c = (custom[productName] ?? "").trim();
+    if (c) {
+      const parsed = parseCustomMultiplier(c);
+      return parsed ?? 1;
+    }
+    return getQuantityMultiplier(preset[productName] ?? "kilo moja");
+  }
+
   function getEffectiveQuantityText(
     productName: string,
     preset: Record<string, string>,
@@ -130,9 +156,11 @@ export default function ShopDetail() {
           quantityPreset,
           quantityCustom,
         );
-        const multiplier = (quantityCustom[p.name] ?? "").trim()
-          ? 1
-          : getQuantityMultiplier(quantityPreset[p.name] ?? "kilo moja");
+        const multiplier = getEffectiveMultiplier(
+          p.name,
+          quantityPreset,
+          quantityCustom,
+        );
         return {
           productName: p.name,
           quantityText: qText,
@@ -425,6 +453,7 @@ export default function ShopDetail() {
                             alt={product.name}
                             className="w-full h-full object-cover"
                             loading="lazy"
+                            crossOrigin="anonymous"
                             onError={() =>
                               setProductPhotoErrors((prev) => ({
                                 ...prev,
@@ -518,6 +547,21 @@ export default function ShopDetail() {
                             className="h-7 text-xs font-medium border border-blue-200 focus:border-blue-500"
                             data-ocid={`products.input.${idx + 1}`}
                           />
+                          {(quantityCustom[product.name] ?? "").trim() &&
+                            (() => {
+                              const parsed = parseCustomMultiplier(
+                                quantityCustom[product.name] ?? "",
+                              );
+                              if (parsed !== null) {
+                                return (
+                                  <p className="text-xs font-bold text-primary">
+                                    Bei: TSh{" "}
+                                    {(product.price * parsed).toLocaleString()}
+                                  </p>
+                                );
+                              }
+                              return null;
+                            })()}
                         </div>
                       </CardContent>
                     </Card>
@@ -621,13 +665,11 @@ export default function ShopDetail() {
                                 quantityPreset,
                                 quantityCustom,
                               );
-                              const isCustom =
-                                (quantityCustom[p.name] ?? "").trim() !== "";
-                              const multiplier = isCustom
-                                ? 1
-                                : getQuantityMultiplier(
-                                    quantityPreset[p.name] ?? "kilo moja",
-                                  );
+                              const multiplier = getEffectiveMultiplier(
+                                p.name,
+                                quantityPreset,
+                                quantityCustom,
+                              );
                               const lineTotal = p.price * multiplier;
                               return (
                                 <div
@@ -660,14 +702,11 @@ export default function ShopDetail() {
                                     ) !== "",
                                 )
                                 .reduce((sum, p) => {
-                                  const isCustom =
-                                    (quantityCustom[p.name] ?? "").trim() !==
-                                    "";
-                                  const multiplier = isCustom
-                                    ? 1
-                                    : getQuantityMultiplier(
-                                        quantityPreset[p.name] ?? "kilo moja",
-                                      );
+                                  const multiplier = getEffectiveMultiplier(
+                                    p.name,
+                                    quantityPreset,
+                                    quantityCustom,
+                                  );
                                   return sum + p.price * multiplier;
                                 }, 0)
                                 .toLocaleString()}
