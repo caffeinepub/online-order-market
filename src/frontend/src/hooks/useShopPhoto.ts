@@ -40,7 +40,7 @@ export function useUploadShopPhoto() {
 
         // Upload to blob storage using authenticated identity
         const storageClient = await createStorageClient(identity);
-        const { hash } = await storageClient.putFile(bytes);
+        const { hash } = await storageClient.putFile(bytes, undefined);
         const photoUrl = await storageClient.getDirectURL(hash);
 
         // Get existing socials so we preserve facebook/instagram/tiktok

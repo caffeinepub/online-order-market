@@ -104,7 +104,7 @@ const translations = {
     uploadShopPhoto: "Upload Shop Photo",
     changePhoto: "Change Photo",
     shopPhotoHint: "This photo will appear on your shop card",
-    photoTooLarge: "Photo must be under 2MB",
+    photoTooLarge: "Photo must be under 3.5MB",
     photoUploaded: "Shop photo saved!",
 
     // Toasts
@@ -154,6 +154,54 @@ const translations = {
     shopLocationSection: "Shop Location",
     locationSaved: "Location saved!",
     locationSaveError: "Failed to save location.",
+
+    // Payment
+    paymentNumbers: "Payment Numbers",
+    paymentNumbersHint:
+      "Add your M-Pesa / mobile money numbers for customers to pay",
+    addPaymentNumber: "Add Payment Number",
+    network: "Network",
+    accountHolder: "Account Holder Name",
+    payNow: "Pay Now",
+    payLater: "Pay After Delivery",
+    copyNumber: "Copy Number",
+    copied: "Copied!",
+    paymentInstructions:
+      "Copy this number, open your mobile money app, and send payment. Then return here to submit proof.",
+    submitProof: "Submit Payment Proof",
+    pasteProof: "Paste your SMS confirmation here...",
+    proofSubmitted: "Payment proof submitted!",
+    proofError:
+      "Could not submit proof automatically. Please screenshot and send to the shop owner directly.",
+    paymentStatus: "Payment Status",
+    paid: "Paid",
+    unpaid: "Unpaid",
+    openApp: "Open App",
+    noPaymentNumbers: "This shop has not set up payment numbers yet.",
+
+    // Account Deletion
+    deleteAccount: "Delete Account",
+    deleteAccountWarning:
+      "Are you sure you want to delete your account? Your shop and all products will be permanently deleted.",
+    confirmDelete: "Yes, Delete My Account",
+    deletingAccount: "Deleting...",
+    accountDeleted: "Account deleted successfully.",
+    accountDeleteError: "Failed to delete account.",
+
+    // Offer
+    specialOffer: "Special Offer",
+    hasOffers: "This shop has special offers!",
+    offerLabel: "Offer",
+    productOffer: "Product Offer/Discount (optional)",
+
+    // Customer orders
+    myOrders: "My Orders",
+    viewMyOrders: "View My Orders",
+    enterPhoneToView: "Enter your phone number to view your orders",
+    searchOrders: "Search",
+    noOrdersFound: "No orders found for this number.",
+    orderedItems: "Items Ordered",
+    orderDate: "Order Date",
   },
   sw: {
     // Header
@@ -258,7 +306,7 @@ const translations = {
     uploadShopPhoto: "Pakia Picha ya Duka",
     changePhoto: "Badilisha Picha",
     shopPhotoHint: "Picha hii itaonekana kwenye kadi ya duka lako",
-    photoTooLarge: "Picha lazima iwe chini ya 2MB",
+    photoTooLarge: "Picha lazima iwe chini ya 3.5MB",
     photoUploaded: "Picha ya duka imehifadhiwa!",
 
     // Toasts
@@ -308,6 +356,54 @@ const translations = {
     shopLocationSection: "Eneo la Duka",
     locationSaved: "Eneo limehifadhiwa!",
     locationSaveError: "Imeshindwa kuhifadhi eneo.",
+
+    // Payment
+    paymentNumbers: "Nambari za Malipo",
+    paymentNumbersHint:
+      "Ongeza nambari zako za M-Pesa / pesa za simu kwa wateja kulipa",
+    addPaymentNumber: "Ongeza Nambari ya Malipo",
+    network: "Mtandao",
+    accountHolder: "Jina la Mwenye Akaunti",
+    payNow: "Lipa Sasa",
+    payLater: "Lipa Baada ya Mzigo",
+    copyNumber: "Nakili Nambari",
+    copied: "Imenakiliwa!",
+    paymentInstructions:
+      "Nakili nambari hii, nenda kwenye app ya malipo yako, na utume pesa. Kisha rudi hapa kutuma uthibitisho.",
+    submitProof: "Tuma Uthibitisho wa Malipo",
+    pasteProof: "Bandika ujumbe wa SMS wa uthibitisho hapa...",
+    proofSubmitted: "Uthibitisho wa malipo umetumwa!",
+    proofError:
+      "Haikuweza kutuma uthibitisho kiotomatiki. Tafadhali piga picha ya skrini na utumie mmiliki wa duka moja kwa moja.",
+    paymentStatus: "Hali ya Malipo",
+    paid: "Amelipa",
+    unpaid: "Hajalipa",
+    openApp: "Fungua App",
+    noPaymentNumbers: "Duka hili halijasanidi nambari za malipo bado.",
+
+    // Account Deletion
+    deleteAccount: "Futa Akaunti",
+    deleteAccountWarning:
+      "Je, una uhakika unataka kufuta akaunti yako? Duka lako na bidhaa zote zitafutwa kabisa.",
+    confirmDelete: "Ndiyo, Futa Akaunti Yangu",
+    deletingAccount: "Inafuta...",
+    accountDeleted: "Akaunti imefutwa kwa mafanikio.",
+    accountDeleteError: "Imeshindwa kufuta akaunti.",
+
+    // Offer
+    specialOffer: "Punguzo Maalum",
+    hasOffers: "Duka hili lina matoleo maalum!",
+    offerLabel: "Ofa",
+    productOffer: "Ofa/Punguzo la Bidhaa (hiari)",
+
+    // Customer orders
+    myOrders: "Maagizo Yangu",
+    viewMyOrders: "Tazama Maagizo Yangu",
+    enterPhoneToView: "Weka nambari yako ya simu kutazama maagizo yako",
+    searchOrders: "Tafuta",
+    noOrdersFound: "Hakuna maagizo kwa nambari hii.",
+    orderedItems: "Bidhaa Zilizoagizwa",
+    orderDate: "Tarehe ya Agizo",
   },
 };
 

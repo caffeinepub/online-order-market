@@ -7,13 +7,29 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Principal } from "@icp-sdk/core/principal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -22,6 +38,7 @@ import {
   Camera,
   CheckCircle,
   Clock,
+  CreditCard,
   ImagePlus,
   Loader2,
   LogOut,
@@ -33,27 +50,31 @@ import {
   Settings,
   Share2,
   ShoppingBag,
+  Tag,
   Trash2,
   User,
   Volume2,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FaFacebook, FaInstagram, FaTiktok } from "react-icons/fa";
 import { toast } from "sonner";
-import type { ShopData } from "../backend.d";
+import type { ShopData, ShopPaymentInfo } from "../backend.d";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useNotifSound } from "../hooks/useNotifSound";
 import { playSound, useOrderNotification } from "../hooks/useOrderNotification";
 import {
   useAddProduct,
+  useDeleteMyShop,
   useDeleteProduct,
   useGetAllShops,
   useGetMyProducts,
   useGetOrdersForShop,
+  useGetProductPhotos,
   useRegisterShop,
   useUpdateProduct,
   useUpdateShop,
@@ -67,6 +88,20 @@ import {
 import { useSaveShopSocials, useShopSocials } from "../hooks/useShopSocials";
 import { convertToJpeg } from "../utils/imageUtils";
 
+function formatOrderTime(createdAt: bigint): string {
+  const ms = Number(createdAt / BigInt(1_000_000));
+  const date = new Date(ms);
+  return date.toLocaleString("sw-TZ", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB
+
 const SOUND_OPTIONS = [
   { id: "bell", label: "Bell" },
   { id: "chime", label: "Chime" },
@@ -74,8 +109,24 @@ const SOUND_OPTIONS = [
   { id: "alert", label: "Alert" },
 ];
 
+const PAYMENT_NETWORKS = [
+  "M-Pesa",
+  "Tigo Pesa",
+  "Airtel Money",
+  "Halopesa",
+  "Zantel",
+];
+
+type ProductWithPhoto = {
+  name: string;
+  price: number;
+  offer?: string;
+  photoUrl?: string;
+};
+
 export default function OwnerDashboard() {
   const { identity, clear, isInitializing } = useInternetIdentity();
+  const { actor } = useActor();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useLanguage();
@@ -86,11 +137,41 @@ export default function OwnerDashboard() {
     }
   }, [identity, isInitializing, navigate]);
 
+  // Request browser notification permission on mount
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
   const ownerPrincipal = identity?.getPrincipal().toString();
 
   const { data: allShops, isLoading: shopsLoading } = useGetAllShops();
   const { data: orders, isLoading: ordersLoading } = useGetOrdersForShop();
-  const { data: products, isLoading: productsLoading } = useGetMyProducts();
+  const { data: rawProducts, isLoading: productsLoading } = useGetMyProducts();
+  const products = (rawProducts ?? []) as ProductWithPhoto[];
+  const ownerPrincipalObj = ownerPrincipal
+    ? Principal.fromText(ownerPrincipal)
+    : null;
+  const { data: productPhotos } = useGetProductPhotos(ownerPrincipalObj);
+  const photoMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const [name, url] of productPhotos ?? []) {
+      m[name] = url;
+    }
+    // Fallback: check localStorage for cached photos
+    for (const product of products) {
+      if (!m[product.name] && ownerPrincipal) {
+        try {
+          const cached = localStorage.getItem(
+            `productPhoto_${ownerPrincipal}_${product.name}`,
+          );
+          if (cached) m[product.name] = cached;
+        } catch {}
+      }
+    }
+    return m;
+  }, [productPhotos, products, ownerPrincipal]);
   const verifyOrder = useVerifyOrder();
   const addProduct = useAddProduct();
   const updateProduct = useUpdateProduct();
@@ -98,6 +179,7 @@ export default function OwnerDashboard() {
   const registerShop = useRegisterShop();
   const updateShop = useUpdateShop();
   const saveSocials = useSaveShopSocials();
+  const deleteMyShop = useDeleteMyShop();
 
   // Photo
   const photoUrl = useShopPhotoReactive(ownerPrincipal);
@@ -106,13 +188,46 @@ export default function OwnerDashboard() {
   const productFileInputRef = useRef<HTMLInputElement>(null);
   const editProductFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Active tab tracking
   const myShop =
     allShops?.find(([p]) => p.toString() === ownerPrincipal)?.[1] ?? null;
   const [activeTab, setActiveTab] = useState(myShop ? "orders" : "settings");
 
+  // Browser notification for new orders
+
   // Notification hooks
   const { hasUnread } = useOrderNotification(orders, activeTab === "orders");
+
+  // Enhanced: also show browser notification when orders increase
+  const prevOrderCountRef = useRef<number | null>(null);
+  useEffect(() => {
+    const count = orders?.length ?? 0;
+    if (
+      prevOrderCountRef.current !== null &&
+      count > prevOrderCountRef.current
+    ) {
+      // Get the newest order's product names
+      const newestOrder = orders?.[orders.length - 1];
+      const names =
+        newestOrder?.items.map((i) => i.productName).join(", ") ?? "";
+      if ("Notification" in window && Notification.permission === "granted") {
+        const notif = new Notification(
+          `Agizo Jipya! - ${myShop?.businessName ?? "Duka Lako"}`,
+          {
+            body: `Bidhaa: ${names}`,
+            icon: "/icon-192.png",
+            tag: "new-order",
+            requireInteraction: true,
+          },
+        );
+        notif.onclick = () => {
+          window.focus();
+          notif.close();
+        };
+      }
+    }
+    prevOrderCountRef.current = count;
+  }, [orders, myShop?.businessName]);
+
   const myPrincipal = identity?.getPrincipal().toString() ?? "";
   const { data: savedShopLoc } = useShopLocation(myPrincipal);
   const saveLocation = useSaveShopLocation();
@@ -141,18 +256,33 @@ export default function OwnerDashboard() {
       },
     );
   };
+
   const { selectedSound, setSelectedSound } = useNotifSound();
+
+  // Payment numbers state
+  const [paymentNumbers, setPaymentNumbers] = useState<ShopPaymentInfo[]>([]);
+  const [newPayment, setNewPayment] = useState<ShopPaymentInfo>({
+    network: "M-Pesa",
+    phoneNumber: "",
+    accountHolder: "",
+  });
+
+  // Sync payment numbers from loaded shop
+  useEffect(() => {
+    if (myShop?.payments) {
+      setPaymentNumbers(myShop.payments);
+    }
+  }, [myShop]);
 
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !ownerPrincipal) return;
-    if (file.size > 2 * 1024 * 1024) {
+    if (file.size > MAX_IMAGE_SIZE) {
       toast.error(t("photoTooLarge"));
       return;
     }
     try {
       const dataUrl = await uploadPhoto(ownerPrincipal, file);
-      // Save to backend so all customers can see the photo
       await saveSocials.mutateAsync({
         principalId: ownerPrincipal,
         socials: {
@@ -175,6 +305,7 @@ export default function OwnerDashboard() {
     ownerName: "",
     phone: "",
     address: "",
+    payments: [],
   });
   const [socialForm, setSocialForm] = useState({
     facebook: "",
@@ -190,6 +321,7 @@ export default function OwnerDashboard() {
         ownerName: myShop.ownerName,
         phone: myShop.phone,
         address: myShop.address,
+        payments: myShop.payments ?? [],
       });
     }
   }, [myShop]);
@@ -222,11 +354,12 @@ export default function OwnerDashboard() {
       return;
     }
     try {
+      const shopData: ShopData = { ...shopForm, payments: paymentNumbers };
       if (myShop) {
-        await updateShop.mutateAsync(shopForm);
+        await updateShop.mutateAsync(shopData);
         toast.success(t("shopUpdated"));
       } else {
-        await registerShop.mutateAsync(shopForm);
+        await registerShop.mutateAsync(shopData);
         toast.success(t("shopRegistered"));
       }
     } catch {
@@ -250,15 +383,18 @@ export default function OwnerDashboard() {
 
   const [newProductName, setNewProductName] = useState("");
   const [newProductPrice, setNewProductPrice] = useState("");
-
+  const [newProductOffer, setNewProductOffer] = useState("");
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
   const [editProductPrice, setEditProductPrice] = useState("");
+  const [editProductOffer, setEditProductOffer] = useState("");
   const [newProductPhotoUrl, setNewProductPhotoUrl] = useState("");
   const [newProductPhotoUploading, setNewProductPhotoUploading] =
     useState(false);
   const [editProductPhotoUrl, setEditProductPhotoUrl] = useState("");
   const [editProductPhotoUploading, setEditProductPhotoUploading] =
     useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const handleProductPhotoSelect = async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -266,8 +402,8 @@ export default function OwnerDashboard() {
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Photo must be under 5MB");
+    if (file.size > MAX_IMAGE_SIZE) {
+      toast.error(t("photoTooLarge"));
       return;
     }
     const setter =
@@ -277,17 +413,35 @@ export default function OwnerDashboard() {
     const urlSetter =
       mode === "add" ? setNewProductPhotoUrl : setEditProductPhotoUrl;
     setter(true);
+    const productName = mode === "add" ? newProductName.trim() : editingProduct;
     try {
       const { createStorageClient } = await import(
         "../utils/createStorageClient"
       );
-      // Convert to JPEG for universal device compatibility
-      const jpegFile = await convertToJpeg(file, 0.85, 1200, 1200);
+      const jpegFile = await convertToJpeg(file, 0.85, 600, 600);
       const bytes = new Uint8Array(await jpegFile.arrayBuffer());
       const storageClient = await createStorageClient(identity);
-      const { hash } = await storageClient.putFile(bytes);
+      const { hash } = await storageClient.putFile(bytes, undefined);
       const url = await storageClient.getDirectURL(hash);
       urlSetter(url);
+      // Cache to localStorage for immediate display
+      if (productName && ownerPrincipal) {
+        try {
+          localStorage.setItem(
+            `productPhoto_${ownerPrincipal}_${productName}`,
+            url,
+          );
+        } catch {}
+      }
+      // Save photo URL to backend immediately if product name is known
+      if (productName && actor) {
+        try {
+          await (actor as any).setProductPhoto(productName, url);
+          queryClient.invalidateQueries({ queryKey: ["productPhotos"] });
+        } catch {
+          // Non-fatal: photo saved locally, will try again on product save
+        }
+      }
       toast.success("Photo uploaded!");
     } catch {
       toast.error("Failed to upload photo");
@@ -303,10 +457,23 @@ export default function OwnerDashboard() {
       await addProduct.mutateAsync({
         name: newProductName.trim(),
         price: Number.parseFloat(newProductPrice),
-        photoUrl: newProductPhotoUrl,
-      });
+        offer: newProductOffer.trim() || undefined,
+      } as any);
+      // Save photo to backend using separate map
+      if (newProductPhotoUrl && actor) {
+        try {
+          await (actor as any).setProductPhoto(
+            newProductName.trim(),
+            newProductPhotoUrl,
+          );
+          queryClient.invalidateQueries({ queryKey: ["productPhotos"] });
+        } catch {
+          // Non-fatal
+        }
+      }
       setNewProductName("");
       setNewProductPrice("");
+      setNewProductOffer("");
       setNewProductPhotoUrl("");
       toast.success(t("productAdded"));
     } catch {
@@ -319,10 +486,20 @@ export default function OwnerDashboard() {
       await updateProduct.mutateAsync({
         name,
         price: Number.parseFloat(editProductPrice),
-        photoUrl: editProductPhotoUrl,
-      });
+        offer: editProductOffer.trim() || undefined,
+      } as any);
+      // Save photo to backend using separate map
+      if (editProductPhotoUrl && actor) {
+        try {
+          await (actor as any).setProductPhoto(name, editProductPhotoUrl);
+          queryClient.invalidateQueries({ queryKey: ["productPhotos"] });
+        } catch {
+          // Non-fatal
+        }
+      }
       setEditingProduct(null);
       setEditProductPhotoUrl("");
+      setEditProductOffer("");
       toast.success(t("productUpdated"));
     } catch {
       toast.error(t("productUpdateError"));
@@ -351,6 +528,33 @@ export default function OwnerDashboard() {
     await clear();
     queryClient.clear();
     navigate({ to: "/" });
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeletingAccount(true);
+    try {
+      await deleteMyShop.mutateAsync();
+      await clear();
+      queryClient.clear();
+      toast.success(t("accountDeleted"));
+      navigate({ to: "/" });
+    } catch {
+      toast.error(t("accountDeleteError"));
+    } finally {
+      setDeletingAccount(false);
+      setDeleteDialogOpen(false);
+    }
+  };
+
+  const handleAddPaymentNumber = () => {
+    if (!newPayment.phoneNumber.trim() || !newPayment.accountHolder.trim())
+      return;
+    setPaymentNumbers((prev) => [...prev, { ...newPayment }]);
+    setNewPayment({ network: "M-Pesa", phoneNumber: "", accountHolder: "" });
+  };
+
+  const handleRemovePayment = (index: number) => {
+    setPaymentNumbers((prev) => prev.filter((_, i) => i !== index));
   };
 
   if (isInitializing || (!identity && isInitializing)) {
@@ -409,7 +613,7 @@ export default function OwnerDashboard() {
                 variant="outline"
                 size="sm"
                 onClick={handleLogout}
-                className="gap-2 flex-shrink-0 border-2 font-bold"
+                className="gap-2 flex-shrink-0 border-2 font-bold btn-bold"
                 data-ocid="dashboard.secondary_button"
               >
                 <LogOut className="h-4 w-4" /> {t("logout")}
@@ -432,6 +636,15 @@ export default function OwnerDashboard() {
                 </div>
               </div>
             )}
+
+            {/* Browser notification hint */}
+            {"Notification" in window &&
+              Notification.permission !== "granted" && (
+                <div className="mt-3 text-xs text-muted-foreground font-medium bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                  🔔 Wezesha arifa za kivinjari ili upate sauti hata ukiwa nje
+                  ya app.
+                </div>
+              )}
           </div>
         </div>
 
@@ -512,22 +725,29 @@ export default function OwnerDashboard() {
                         <Card className="border-2 border-border shadow-md hover:shadow-lg transition-shadow">
                           <CardHeader className="pb-3">
                             <div className="flex items-start justify-between gap-4">
-                              <div>
-                                <CardTitle className="font-display font-bold text-base">
-                                  {order.customerName}
-                                </CardTitle>
-                                <div className="flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">
+                              <div className="flex-1 min-w-0">
+                                {/* Product names prominently shown */}
+                                <p className="font-extrabold text-base text-foreground mb-1">
+                                  {order.items
+                                    .map((i) => i.productName)
+                                    .join(", ")}
+                                </p>
+                                <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
                                   <span className="flex items-center gap-1 font-medium">
-                                    <Phone className="h-3 w-3" />
+                                    <User className="h-3.5 w-3.5" />
+                                    {order.customerName}
+                                  </span>
+                                  <span className="flex items-center gap-1 font-medium">
+                                    <Phone className="h-3.5 w-3.5" />
                                     {order.customerPhone}
                                   </span>
                                   <span className="flex items-center gap-1 font-medium">
-                                    <MapPin className="h-3 w-3" />
-                                    {order.customerAddress}
+                                    <Clock className="h-3.5 w-3.5" />
+                                    {order.deliveryTime}
                                   </span>
                                   <span className="flex items-center gap-1 font-medium">
-                                    <Clock className="h-3 w-3" />
-                                    {order.deliveryTime}
+                                    <Clock className="h-3.5 w-3.5 text-muted-foreground/60" />
+                                    {formatOrderTime(order.createdAt)}
                                   </span>
                                 </div>
                               </div>
@@ -556,6 +776,18 @@ export default function OwnerDashboard() {
                                     </>
                                   )}
                                 </Badge>
+                                <Badge
+                                  className={
+                                    order.paymentStatus === "paid"
+                                      ? "bg-blue-50 text-blue-700 border-2 border-blue-200 font-bold"
+                                      : "bg-gray-50 text-gray-600 border-2 border-gray-200 font-bold"
+                                  }
+                                >
+                                  <CreditCard className="h-3 w-3 mr-1" />
+                                  {order.paymentStatus === "paid"
+                                    ? t("paid")
+                                    : t("unpaid")}
+                                </Badge>
                               </div>
                             </div>
                           </CardHeader>
@@ -567,11 +799,10 @@ export default function OwnerDashboard() {
                                   key={item.productName}
                                   className="flex justify-between text-sm"
                                 >
-                                  <span className="text-muted-foreground font-medium">
-                                    {item.productName} ×{" "}
-                                    {item.quantity.toString()}
+                                  <span className="font-bold text-foreground">
+                                    {item.productName}
                                   </span>
-                                  <span className="font-bold">
+                                  <span className="font-bold text-primary">
                                     TSh{" "}
                                     {(
                                       Number(item.quantity) * item.unitPrice
@@ -580,27 +811,57 @@ export default function OwnerDashboard() {
                                 </div>
                               ))}
                             </div>
-                            <div className="flex items-center justify-between">
+                            {order.paymentProof?.proofText && (
+                              <div className="mb-3 bg-green-50 border-2 border-green-400 rounded-lg p-3 text-sm text-green-900 font-medium">
+                                <p className="font-extrabold mb-1 flex items-center gap-1.5">
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                  Uthibitisho wa Malipo:
+                                </p>
+                                <p className="bg-white rounded p-2 border border-green-200">
+                                  {order.paymentProof.proofText}
+                                </p>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
                               <span className="font-bold text-primary">
                                 {t("total")}: TSh{" "}
                                 {order.totalPrice.toLocaleString()}
                               </span>
-                              {order.status !== "verified" && (
-                                <Button
-                                  size="sm"
-                                  className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold"
-                                  onClick={() => handleVerifyOrder(index)}
-                                  disabled={verifyOrder.isPending}
-                                  data-ocid={`orders.item.${index + 1}.primary_button`}
-                                >
-                                  {verifyOrder.isPending ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : (
-                                    <CheckCircle className="h-3 w-3" />
+                              <div className="flex gap-2">
+                                {order.paymentProof?.proofText &&
+                                  order.status !== "verified" && (
+                                    <Button
+                                      size="sm"
+                                      className="gap-1.5 bg-green-600 text-white hover:bg-green-700 font-bold btn-bold"
+                                      onClick={() => handleVerifyOrder(index)}
+                                      disabled={verifyOrder.isPending}
+                                      data-ocid={`orders.item.${index + 1}.confirm_button`}
+                                    >
+                                      {verifyOrder.isPending ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <CheckCircle className="h-3 w-3" />
+                                      )}
+                                      Thibitisha Malipo
+                                    </Button>
                                   )}
-                                  {t("markVerified")}
-                                </Button>
-                              )}
+                                {order.status !== "verified" && (
+                                  <Button
+                                    size="sm"
+                                    className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold btn-bold"
+                                    onClick={() => handleVerifyOrder(index)}
+                                    disabled={verifyOrder.isPending}
+                                    data-ocid={`orders.item.${index + 1}.primary_button`}
+                                  >
+                                    {verifyOrder.isPending ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <CheckCircle className="h-3 w-3" />
+                                    )}
+                                    {t("markVerified")}
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </CardContent>
                         </Card>
@@ -637,6 +898,7 @@ export default function OwnerDashboard() {
                             value={newProductName}
                             onChange={(e) => setNewProductName(e.target.value)}
                             required
+                            className="border-2 font-medium"
                             data-ocid="product.input"
                           />
                         </div>
@@ -649,10 +911,19 @@ export default function OwnerDashboard() {
                             value={newProductPrice}
                             onChange={(e) => setNewProductPrice(e.target.value)}
                             required
+                            className="border-2 font-medium"
                             data-ocid="product.input"
                           />
                         </div>
                       </div>
+                      {/* Offer field */}
+                      <Input
+                        placeholder={t("productOffer")}
+                        value={newProductOffer}
+                        onChange={(e) => setNewProductOffer(e.target.value)}
+                        className="border-2 font-medium"
+                        data-ocid="product.input"
+                      />
                       {/* Product Photo Upload */}
                       <div className="flex items-center gap-3">
                         <input
@@ -664,11 +935,13 @@ export default function OwnerDashboard() {
                         />
                         {newProductPhotoUrl ? (
                           <div className="flex items-center gap-2">
-                            <img
-                              src={newProductPhotoUrl}
-                              alt="Product preview"
-                              className="w-12 h-12 object-cover rounded-lg border-2 border-primary/30"
-                            />
+                            <div className="w-12 h-12 rounded-lg border-2 border-primary/30 overflow-hidden">
+                              <img
+                                src={newProductPhotoUrl}
+                                alt="Product preview"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
                             <Button
                               type="button"
                               variant="ghost"
@@ -676,7 +949,7 @@ export default function OwnerDashboard() {
                               className="text-xs text-muted-foreground"
                               onClick={() => setNewProductPhotoUrl("")}
                             >
-                              Remove photo
+                              Remove
                             </Button>
                           </div>
                         ) : (
@@ -696,7 +969,7 @@ export default function OwnerDashboard() {
                             )}
                             {newProductPhotoUploading
                               ? "Uploading..."
-                              : "Add Photo (optional)"}
+                              : "Add Photo"}
                           </Button>
                         )}
                         <Button
@@ -704,7 +977,7 @@ export default function OwnerDashboard() {
                           disabled={
                             addProduct.isPending || newProductPhotoUploading
                           }
-                          className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 font-bold ml-auto"
+                          className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 font-bold btn-bold ml-auto"
                           data-ocid="product.primary_button"
                         >
                           {addProduct.isPending ? (
@@ -744,16 +1017,22 @@ export default function OwnerDashboard() {
                         animate={{ opacity: 1 }}
                         data-ocid={`products.item.${index + 1}`}
                       >
-                        <Card className="border-2 border-border shadow-sm hover:shadow-md transition-shadow">
+                        <Card className="border-2 border-border shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                           <CardContent className="py-3 flex items-center gap-3">
-                            {/* Product Photo Thumbnail */}
-                            <div className="w-12 h-12 rounded-lg border-2 border-border overflow-hidden bg-muted/50 flex-shrink-0">
-                              {product.photoUrl ? (
+                            {/* Square product photo thumbnail */}
+                            <div className="w-14 h-14 rounded-lg border-2 border-border overflow-hidden bg-muted/50 flex-shrink-0">
+                              {photoMap[product.name] ||
+                              (editingProduct === product.name &&
+                                editProductPhotoUrl) ? (
                                 <img
-                                  src={product.photoUrl}
+                                  src={
+                                    editingProduct === product.name &&
+                                    editProductPhotoUrl
+                                      ? editProductPhotoUrl
+                                      : photoMap[product.name]
+                                  }
                                   alt={product.name}
                                   className="w-full h-full object-cover"
-                                  crossOrigin="anonymous"
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">
@@ -774,8 +1053,16 @@ export default function OwnerDashboard() {
                                   onChange={(e) =>
                                     setEditProductPrice(e.target.value)
                                   }
-                                  className="w-24"
+                                  className="w-24 border-2"
                                   data-ocid={`products.item.${index + 1}.input`}
+                                />
+                                <Input
+                                  placeholder="Offer..."
+                                  value={editProductOffer}
+                                  onChange={(e) =>
+                                    setEditProductOffer(e.target.value)
+                                  }
+                                  className="w-32 border-2 text-xs"
                                 />
                                 {/* Edit photo */}
                                 <input
@@ -805,11 +1092,13 @@ export default function OwnerDashboard() {
                                   {editProductPhotoUrl ? "Change" : "Photo"}
                                 </Button>
                                 {editProductPhotoUrl && (
-                                  <img
-                                    src={editProductPhotoUrl}
-                                    alt="preview"
-                                    className="w-8 h-8 rounded object-cover border"
-                                  />
+                                  <div className="w-8 h-8 rounded overflow-hidden border">
+                                    <img
+                                      src={editProductPhotoUrl}
+                                      alt="preview"
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
                                 )}
                                 <Button
                                   size="sm"
@@ -820,7 +1109,7 @@ export default function OwnerDashboard() {
                                     updateProduct.isPending ||
                                     editProductPhotoUploading
                                   }
-                                  className="bg-primary text-primary-foreground font-bold"
+                                  className="bg-primary text-primary-foreground font-bold btn-bold"
                                   data-ocid={`products.item.${index + 1}.save_button`}
                                 >
                                   {updateProduct.isPending ? (
@@ -841,17 +1130,20 @@ export default function OwnerDashboard() {
                             ) : (
                               <div className="flex-1 flex items-center justify-between">
                                 <div>
-                                  <span className="font-bold text-sm">
-                                    {product.name}
-                                  </span>
-                                  <span className="ml-3 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
-                                    TSh {product.price.toLocaleString()}
-                                  </span>
-                                  {product.photoUrl && (
-                                    <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs text-green-700 bg-green-50 border border-green-200 font-medium">
-                                      📷
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-bold text-sm">
+                                      {product.name}
                                     </span>
-                                  )}
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                                      TSh {product.price.toLocaleString()}
+                                    </span>
+                                    {product.offer && (
+                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs text-orange-700 bg-orange-50 border border-orange-200 font-bold">
+                                        <Tag className="h-2.5 w-2.5" />
+                                        {product.offer}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <Button
@@ -864,8 +1156,9 @@ export default function OwnerDashboard() {
                                         product.price.toString(),
                                       );
                                       setEditProductPhotoUrl(
-                                        product.photoUrl || "",
+                                        photoMap[product.name] || "",
                                       );
+                                      setEditProductOffer(product.offer || "");
                                     }}
                                     data-ocid={`products.item.${index + 1}.edit_button`}
                                   >
@@ -922,6 +1215,7 @@ export default function OwnerDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center gap-4">
+                      {/* Square profile photo */}
                       <div className="w-24 h-24 rounded-xl border-2 border-primary/20 overflow-hidden bg-muted/50 flex-shrink-0">
                         {photoUrl ? (
                           <img
@@ -946,7 +1240,7 @@ export default function OwnerDashboard() {
                         <Button
                           type="button"
                           variant="outline"
-                          className="gap-2 border-2 border-primary/40 text-primary hover:bg-primary/5 font-bold"
+                          className="gap-2 border-2 border-primary/40 text-primary hover:bg-primary/5 font-bold btn-bold"
                           onClick={() => fileInputRef.current?.click()}
                           disabled={isUploading}
                           data-ocid="settings.upload_button"
@@ -959,13 +1253,14 @@ export default function OwnerDashboard() {
                           {photoUrl ? t("changePhoto") : t("uploadShopPhoto")}
                         </Button>
                         <p className="text-xs text-muted-foreground font-medium">
-                          Max 2MB · JPG, PNG, WebP
+                          Max 3.5MB · JPG, PNG, WebP
                         </p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
+                {/* Shop Info Form */}
                 <Card className="border-2 border-primary/20 shadow-md">
                   <CardHeader className="pb-3">
                     <CardTitle className="font-display font-bold text-base">
@@ -993,6 +1288,7 @@ export default function OwnerDashboard() {
                             })
                           }
                           required
+                          className="border-2 font-medium"
                           data-ocid="settings.input"
                         />
                       </div>
@@ -1011,6 +1307,7 @@ export default function OwnerDashboard() {
                             })
                           }
                           required
+                          className="border-2 font-medium"
                           data-ocid="settings.input"
                         />
                       </div>
@@ -1034,6 +1331,7 @@ export default function OwnerDashboard() {
                           maxLength={10}
                           pattern="[0-9]{10}"
                           required
+                          className="border-2 font-medium"
                           data-ocid="settings.input"
                         />
                       </div>
@@ -1043,7 +1341,7 @@ export default function OwnerDashboard() {
                         </Label>
                         <Textarea
                           id="shopAddress"
-                          placeholder="123 Market Street, City, Country"
+                          placeholder="123 Market Street, City"
                           value={shopForm.address}
                           onChange={(e) =>
                             setShopForm({
@@ -1053,13 +1351,14 @@ export default function OwnerDashboard() {
                           }
                           required
                           rows={3}
+                          className="border-2 font-medium"
                           data-ocid="settings.textarea"
                         />
                       </div>
 
                       <Button
                         type="submit"
-                        className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold shadow-md"
+                        className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold shadow-md btn-bold py-3"
                         disabled={
                           registerShop.isPending || updateShop.isPending
                         }
@@ -1077,6 +1376,131 @@ export default function OwnerDashboard() {
                         )}
                       </Button>
                     </form>
+                  </CardContent>
+                </Card>
+
+                {/* Payment Numbers Card */}
+                <Card className="border-2 border-primary/20 shadow-md">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="font-display font-bold text-base flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-primary" />
+                      {t("paymentNumbers")}
+                    </CardTitle>
+                    <CardDescription className="text-xs font-medium">
+                      {t("paymentNumbersHint")}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Existing payment numbers */}
+                    {paymentNumbers.length > 0 && (
+                      <div className="space-y-2">
+                        {paymentNumbers.map((p, i) => (
+                          <div
+                            key={`${p.network}-${p.phoneNumber}-${i}`}
+                            className="flex items-center justify-between border-2 border-border rounded-lg px-3 py-2"
+                            data-ocid={`payment.item.${i + 1}`}
+                          >
+                            <div>
+                              <p className="font-bold text-sm text-primary">
+                                {p.network}
+                              </p>
+                              <p className="font-extrabold text-base tracking-wide">
+                                {p.phoneNumber}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {p.accountHolder}
+                              </p>
+                            </div>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-destructive"
+                              onClick={() => handleRemovePayment(i)}
+                              data-ocid={`payment.item.${i + 1}.delete_button`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add new payment number */}
+                    <div className="space-y-2 border-t pt-3">
+                      <p className="text-sm font-bold">
+                        {t("addPaymentNumber")}
+                      </p>
+                      <Select
+                        value={newPayment.network}
+                        onValueChange={(v) =>
+                          setNewPayment((prev) => ({ ...prev, network: v }))
+                        }
+                      >
+                        <SelectTrigger
+                          className="border-2 font-medium"
+                          data-ocid="payment.select"
+                        >
+                          <SelectValue placeholder={t("network")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PAYMENT_NETWORKS.map((n) => (
+                            <SelectItem key={n} value={n}>
+                              {n}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        placeholder="0712345678"
+                        value={newPayment.phoneNumber}
+                        onChange={(e) =>
+                          setNewPayment((prev) => ({
+                            ...prev,
+                            phoneNumber: e.target.value
+                              .replace(/\D/g, "")
+                              .slice(0, 10),
+                          }))
+                        }
+                        maxLength={10}
+                        className="border-2 font-medium"
+                        data-ocid="payment.input"
+                      />
+                      <Input
+                        placeholder={t("accountHolder")}
+                        value={newPayment.accountHolder}
+                        onChange={(e) =>
+                          setNewPayment((prev) => ({
+                            ...prev,
+                            accountHolder: e.target.value,
+                          }))
+                        }
+                        className="border-2 font-medium"
+                        data-ocid="payment.input"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="gap-2 border-2 border-primary/40 text-primary font-bold btn-bold"
+                        onClick={handleAddPaymentNumber}
+                        disabled={
+                          !newPayment.phoneNumber.trim() ||
+                          !newPayment.accountHolder.trim()
+                        }
+                        data-ocid="payment.primary_button"
+                      >
+                        <Plus className="h-4 w-4" />
+                        {t("addPaymentNumber")}
+                      </Button>
+                    </div>
+
+                    {/* Save payment numbers with shop */}
+                    {paymentNumbers.length > 0 && (
+                      <p className="text-xs text-muted-foreground font-medium">
+                        Nambari hizi zitahifadhiwa ukibonyeza "
+                        {myShop ? t("updateShop") : t("registerShop")}" hapo
+                        juu.
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -1122,7 +1546,7 @@ export default function OwnerDashboard() {
                                 facebook: e.target.value,
                               })
                             }
-                            className="pl-9 font-medium"
+                            className="pl-9 font-medium border-2"
                             data-ocid="settings.facebook.input"
                           />
                         </div>
@@ -1153,7 +1577,7 @@ export default function OwnerDashboard() {
                                 instagram: e.target.value,
                               })
                             }
-                            className="pl-9 font-medium"
+                            className="pl-9 font-medium border-2"
                             data-ocid="settings.instagram.input"
                           />
                         </div>
@@ -1178,14 +1602,14 @@ export default function OwnerDashboard() {
                                 tiktok: e.target.value,
                               })
                             }
-                            className="pl-9 font-medium"
+                            className="pl-9 font-medium border-2"
                             data-ocid="settings.tiktok.input"
                           />
                         </div>
                       </div>
                       <Button
                         type="submit"
-                        className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold shadow-md mt-2"
+                        className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold shadow-md btn-bold mt-2"
                         disabled={saveSocials.isPending}
                         data-ocid="settings.social.submit_button"
                       >
@@ -1229,7 +1653,7 @@ export default function OwnerDashboard() {
                     <Button
                       type="button"
                       variant="outline"
-                      className="gap-2 border-2 border-primary/40 text-primary hover:bg-primary/5 font-bold"
+                      className="gap-2 border-2 border-primary/40 text-primary hover:bg-primary/5 font-bold btn-bold"
                       onClick={handleSaveCurrentLocation}
                       disabled={locSaving}
                       data-ocid="shop.location.button"
@@ -1291,9 +1715,9 @@ export default function OwnerDashboard() {
                     <Button
                       type="button"
                       variant="outline"
-                      className="gap-2 border-2 border-primary/40 text-primary hover:bg-primary/5 font-bold"
+                      className="gap-2 border-2 border-primary/40 text-primary hover:bg-primary/5 font-bold btn-bold"
                       onClick={() => playSound(selectedSound)}
-                      data-ocid="settings.notif_sound.primary_button"
+                      data-ocid="settings.notif_sound.button"
                     >
                       <Volume2 className="h-4 w-4" />
                       Test Sound
@@ -1301,21 +1725,72 @@ export default function OwnerDashboard() {
                   </CardContent>
                 </Card>
 
-                {ownerPrincipal && (
-                  <div className="bg-muted/50 rounded-lg p-4 border-2 border-border">
-                    <p className="text-xs font-bold text-muted-foreground mb-1">
-                      {t("yourPrincipalId")}
-                    </p>
-                    <p className="text-xs font-mono text-foreground break-all">
-                      {ownerPrincipal}
-                    </p>
-                  </div>
-                )}
+                {/* Danger Zone - Account Deletion */}
+                <Card className="border-2 border-destructive/30 shadow-md">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="font-display font-bold text-base flex items-center gap-2 text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                      {t("deleteAccount")}
+                    </CardTitle>
+                    <CardDescription className="text-xs font-medium">
+                      {t("deleteAccountWarning")}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="gap-2 font-bold btn-bold"
+                      onClick={() => setDeleteDialogOpen(true)}
+                      data-ocid="settings.delete_button"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      {t("deleteAccount")}
+                    </Button>
+                  </CardContent>
+                </Card>
               </div>
             </TabsContent>
           </Tabs>
         </div>
       </main>
+
+      {/* Delete Account Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent data-ocid="settings.delete.dialog">
+          <DialogHeader>
+            <DialogTitle className="text-destructive font-display font-extrabold">
+              {t("deleteAccount")}
+            </DialogTitle>
+            <DialogDescription>{t("deleteAccountWarning")}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              className="font-bold border-2"
+              data-ocid="settings.delete.cancel_button"
+            >
+              {t("cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={deletingAccount}
+              className="font-bold btn-bold"
+              data-ocid="settings.delete.confirm_button"
+            >
+              {deletingAccount ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              {deletingAccount ? t("deletingAccount") : t("confirmDelete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Footer />
     </div>
   );

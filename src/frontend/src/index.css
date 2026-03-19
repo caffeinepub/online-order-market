@@ -1,0 +1,245 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Playfair Display";
+  src: url("/assets/fonts/PlayfairDisplay.woff2") format("woff2");
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/assets/fonts/PlusJakartaSans.woff2") format("woff2");
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root,
+  [data-theme="blue"] {
+    --radius: 0.5rem;
+    --background: 240 30% 98%;
+    --foreground: 250 33% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 250 33% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 250 33% 12%;
+    --primary: 250 62% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 40% 93%;
+    --secondary-foreground: 250 38% 22%;
+    --muted: 240 20% 94%;
+    --muted-foreground: 245 15% 48%;
+    --accent: 250 55% 65%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 245 25% 88%;
+    --input: 245 25% 88%;
+    --ring: 250 62% 42%;
+    --success: 145 45% 45%;
+    --success-foreground: 0 0% 100%;
+    --chart-1: 250 62% 42%;
+    --chart-2: 220 55% 48%;
+    --chart-3: 260 48% 38%;
+    --chart-4: 200 60% 55%;
+    --chart-5: 240 65% 50%;
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 250 33% 12%;
+    --sidebar-primary: 250 62% 42%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 40% 93%;
+    --sidebar-accent-foreground: 250 38% 22%;
+    --sidebar-border: 245 25% 88%;
+    --sidebar-ring: 250 62% 42%;
+  }
+
+  .dark,
+  [data-theme="dark"] {
+    --background: 255 22% 15%;
+    --foreground: 240 8% 96%;
+    --card: 255 25% 18%;
+    --card-foreground: 240 8% 96%;
+    --popover: 255 25% 18%;
+    --popover-foreground: 240 8% 96%;
+    --primary: 250 60% 60%;
+    --primary-foreground: 255 22% 10%;
+    --secondary: 255 28% 24%;
+    --secondary-foreground: 240 6% 92%;
+    --muted: 255 24% 22%;
+    --muted-foreground: 245 12% 60%;
+    --accent: 250 55% 52%;
+    --accent-foreground: 240 8% 96%;
+    --destructive: 0 70% 45%;
+    --destructive-foreground: 240 8% 96%;
+    --border: 255 28% 28%;
+    --input: 255 28% 28%;
+    --ring: 250 60% 60%;
+    --success: 145 40% 42%;
+    --success-foreground: 240 8% 96%;
+    --chart-1: 250 60% 60%;
+    --chart-2: 220 55% 55%;
+    --chart-3: 260 48% 52%;
+    --chart-4: 200 60% 60%;
+    --chart-5: 240 65% 58%;
+    --sidebar: 255 24% 17%;
+    --sidebar-foreground: 240 8% 96%;
+    --sidebar-primary: 250 60% 60%;
+    --sidebar-primary-foreground: 255 22% 10%;
+    --sidebar-accent: 255 28% 24%;
+    --sidebar-accent-foreground: 240 6% 92%;
+    --sidebar-border: 255 28% 28%;
+    --sidebar-ring: 250 60% 60%;
+  }
+
+  [data-theme="gold"] {
+    --radius: 0.5rem;
+    --background: 45 100% 96%;
+    --foreground: 30 40% 10%;
+    --card: 45 90% 98%;
+    --card-foreground: 30 40% 10%;
+    --popover: 45 90% 98%;
+    --popover-foreground: 30 40% 10%;
+    --primary: 38 95% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 45 80% 88%;
+    --secondary-foreground: 30 40% 15%;
+    --muted: 45 60% 90%;
+    --muted-foreground: 30 30% 40%;
+    --accent: 38 85% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 38 50% 75%;
+    --input: 45 50% 90%;
+    --ring: 38 95% 45%;
+    --success: 145 45% 45%;
+    --success-foreground: 0 0% 100%;
+    --chart-1: 38 95% 45%;
+    --chart-2: 30 80% 50%;
+    --chart-3: 45 70% 55%;
+    --chart-4: 20 90% 45%;
+    --chart-5: 50 85% 40%;
+    --sidebar: 45 90% 98%;
+    --sidebar-foreground: 30 40% 10%;
+    --sidebar-primary: 38 95% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 45 80% 88%;
+    --sidebar-accent-foreground: 30 40% 15%;
+    --sidebar-border: 38 50% 75%;
+    --sidebar-ring: 38 95% 45%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  .btn-bold {
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+  .btn-bold:active {
+    transform: scale(0.97);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  }
+  .btn-bold:hover {
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.25);
+  }
+
+  .img-square {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    object-fit: cover;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .market-gradient {
+    background: linear-gradient(
+      135deg,
+      hsl(240, 55%, 93%) 0%,
+      hsl(245, 45%, 96%) 50%,
+      hsl(250, 60%, 91%) 100%
+    );
+  }
+  [data-theme="dark"] .market-gradient,
+  .dark .market-gradient {
+    background: linear-gradient(
+      135deg,
+      hsl(255, 25%, 18%) 0%,
+      hsl(250, 28%, 22%) 50%,
+      hsl(260, 22%, 16%) 100%
+    );
+  }
+  [data-theme="gold"] .market-gradient {
+    background: linear-gradient(
+      135deg,
+      hsl(45, 80%, 92%) 0%,
+      hsl(42, 75%, 95%) 50%,
+      hsl(38, 85%, 90%) 100%
+    );
+  }
+  .hero-texture {
+    background-image: radial-gradient(
+        ellipse at 20% 50%,
+        hsla(250, 55%, 65%, 0.25) 0%,
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse at 80% 20%,
+        hsla(245, 62%, 58%, 0.15) 0%,
+        transparent 50%
+      );
+  }
+  [data-theme="dark"] .hero-texture,
+  .dark .hero-texture {
+    background-image: radial-gradient(
+        ellipse at 20% 50%,
+        hsla(250, 55%, 42%, 0.2) 0%,
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse at 80% 20%,
+        hsla(245, 55%, 35%, 0.15) 0%,
+        transparent 50%
+      );
+  }
+  [data-theme="gold"] .hero-texture {
+    background-image: radial-gradient(
+        ellipse at 20% 50%,
+        hsla(38, 90%, 55%, 0.2) 0%,
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse at 80% 20%,
+        hsla(45, 80%, 60%, 0.15) 0%,
+        transparent 50%
+      );
+  }
+}

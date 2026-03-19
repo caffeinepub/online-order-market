@@ -1,56 +1,62 @@
 import type { Principal } from "@icp-sdk/core/principal";
-export interface Some<T> {
-    __kind__: "Some";
-    value: T;
+export interface ShopPaymentInfo {
+    network: string;
+    phoneNumber: string;
+    accountHolder: string;
 }
-export interface None {
-    __kind__: "None";
-}
-export type Option<T> = Some<T> | None;
 export interface ShopData {
-    ownerName: string;
     businessName: string;
-    address: string;
+    ownerName: string;
     phone: string;
+    address: string;
+    payments: Array<ShopPaymentInfo>;
+}
+export interface ShopSocials {
+    facebook: string;
+    instagram: string;
+    tiktok: string;
+    photoUrl: string;
 }
 export interface ShopLocation {
     latitude: number;
     longitude: number;
 }
-export interface Product {
+export interface UserProfile {
     name: string;
-    photoUrl: string;
-    price: number;
-}
-export type Time = bigint;
-export interface OrderItem {
-    productName: string;
-    quantityText: string;
-    quantity: bigint;
-    unitPrice: number;
-}
-export interface ShopSocials {
-    tiktok: string;
-    instagram: string;
-    photoUrl: string;
-    facebook: string;
 }
 export interface Order {
     customerName: string;
-    status: OrderStatus;
     customerPhone: string;
-    createdAt: Time;
-    deliveryTime: string;
     customerAddress: string;
+    deliveryTime: string;
     items: Array<OrderItem>;
     totalPrice: number;
+    createdAt: bigint;
+    status: OrderStatus;
+    paymentProof?: PaymentProof;
+    paymentStatus: PaymentStatus;
 }
-export interface UserProfile {
+export interface OrderItem {
+    productName: string;
+    quantity: bigint;
+    unitPrice: number;
+}
+export interface PaymentProof {
+    proofText?: string;
+    screenshotUrl?: string;
+}
+export interface Product {
+    offer?: string;
     name: string;
+    price: number;
 }
 export enum OrderStatus {
     verified = "verified",
     pending = "pending"
+}
+export enum PaymentStatus {
+    paid = "paid",
+    unpaid = "unpaid"
 }
 export enum UserRole {
     admin = "admin",
@@ -60,20 +66,24 @@ export enum UserRole {
 export interface backendInterface {
     addProduct(product: Product): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    deleteMyShop(): Promise<void>;
+    deleteOrders(orderIndices: Array<bigint>): Promise<void>;
     deleteProduct(productName: string): Promise<void>;
     getAllShops(): Promise<Array<[Principal, ShopData]>>;
-    getCallerUserProfile(): Promise<UserProfile | null>;
-    getCallerUserRole(): Promise<UserRole>;
+    getCallerUserProfile(): Promise<UserProfile | undefined>;
+    getCustomerOrders(phone: string): Promise<Array<Order>>;
     getOrdersForShop(): Promise<Array<Order>>;
     getProductsForShop(shopOwner: Principal): Promise<Array<Product>>;
-    getShopLocation(shopOwner: Principal): Promise<ShopLocation | null>;
-    getShopSocials(shopOwner: Principal): Promise<ShopSocials | null>;
-    getUserProfile(user: Principal): Promise<UserProfile | null>;
-    isCallerAdmin(): Promise<boolean>;
+    getProductPhotos(shopOwner: Principal): Promise<Array<[string, string]>>;
+    setProductPhoto(productName: string, photoUrl: string): Promise<void>;
+    getShopLocation(shopOwner: Principal): Promise<ShopLocation | undefined>;
+    getShopSocials(shopOwner: Principal): Promise<ShopSocials | undefined>;
+    getUserProfile(user: Principal): Promise<UserProfile | undefined>;
     placeOrder(shopOwner: Principal, order: Order): Promise<void>;
     registerShop(shopData: ShopData): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     setShopLocation(lat: number, lng: number): Promise<void>;
+    submitPaymentProof(shopOwner: Principal, orderIndex: bigint, proofText: string, screenshotUrl: string): Promise<void>;
     updateProduct(product: Product): Promise<void>;
     updateShop(shopData: ShopData): Promise<void>;
     updateShopSocials(socials: ShopSocials): Promise<void>;

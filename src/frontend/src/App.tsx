@@ -44,9 +44,12 @@ const router = createRouter({ routeTree });
 
 // Apply saved theme before React renders to avoid flash
 try {
-  const savedTheme = localStorage.getItem("theme");
+  const savedTheme = localStorage.getItem("theme") || "blue";
+  const root = document.documentElement;
+  root.classList.remove("dark");
+  root.setAttribute("data-theme", savedTheme);
   if (savedTheme === "dark") {
-    document.documentElement.classList.add("dark");
+    root.classList.add("dark");
   }
 } catch {}
 

@@ -19,14 +19,24 @@ export const _CaffeineStorageRefillResult = IDL.Record({
   'success' : IDL.Opt(IDL.Bool),
   'topped_up_amount' : IDL.Opt(IDL.Nat),
 });
-export const Product = IDL.Record({ 'name' : IDL.Text, 'price' : IDL.Float64 });
+export const Product = IDL.Record({
+  'offer' : IDL.Opt(IDL.Text),
+  'name' : IDL.Text,
+  'price' : IDL.Float64,
+});
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const ShopPaymentInfo = IDL.Record({
+  'network' : IDL.Text,
+  'phoneNumber' : IDL.Text,
+  'accountHolder' : IDL.Text,
+});
 export const ShopData = IDL.Record({
   'ownerName' : IDL.Text,
+  'payments' : IDL.Vec(ShopPaymentInfo),
   'businessName' : IDL.Text,
   'address' : IDL.Text,
   'phone' : IDL.Text,
@@ -36,7 +46,15 @@ export const OrderStatus = IDL.Variant({
   'verified' : IDL.Null,
   'pending' : IDL.Null,
 });
+export const PaymentStatus = IDL.Variant({
+  'paid' : IDL.Null,
+  'unpaid' : IDL.Null,
+});
 export const Time = IDL.Int;
+export const PaymentProof = IDL.Record({
+  'proofText' : IDL.Opt(IDL.Text),
+  'screenshotUrl' : IDL.Opt(IDL.Text),
+});
 export const OrderItem = IDL.Record({
   'productName' : IDL.Text,
   'quantity' : IDL.Nat,
@@ -45,9 +63,11 @@ export const OrderItem = IDL.Record({
 export const Order = IDL.Record({
   'customerName' : IDL.Text,
   'status' : OrderStatus,
+  'paymentStatus' : PaymentStatus,
   'customerPhone' : IDL.Text,
   'createdAt' : Time,
   'deliveryTime' : IDL.Text,
+  'paymentProof' : IDL.Opt(PaymentProof),
   'customerAddress' : IDL.Text,
   'items' : IDL.Vec(OrderItem),
   'totalPrice' : IDL.Float64,
@@ -93,6 +113,7 @@ export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addProduct' : IDL.Func([Product], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'deleteMyShop' : IDL.Func([], [], []),
   'deleteProduct' : IDL.Func([IDL.Text], [], []),
   'getAllShops' : IDL.Func(
       [],
@@ -101,6 +122,7 @@ export const idlService = IDL.Service({
     ),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getCustomerOrders' : IDL.Func([IDL.Text], [IDL.Vec(Order)], ['query']),
   'getOrdersForShop' : IDL.Func([], [IDL.Vec(Order)], ['query']),
   'getProductsForShop' : IDL.Func(
       [IDL.Principal],
@@ -127,6 +149,11 @@ export const idlService = IDL.Service({
   'registerShop' : IDL.Func([ShopData], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'setShopLocation' : IDL.Func([IDL.Float64, IDL.Float64], [], []),
+  'submitPaymentProof' : IDL.Func(
+      [IDL.Principal, IDL.Nat, IDL.Text, IDL.Text],
+      [],
+      [],
+    ),
   'updateProduct' : IDL.Func([Product], [], []),
   'updateShop' : IDL.Func([ShopData], [], []),
   'updateShopSocials' : IDL.Func([ShopSocials], [], []),
@@ -147,14 +174,24 @@ export const idlFactory = ({ IDL }) => {
     'success' : IDL.Opt(IDL.Bool),
     'topped_up_amount' : IDL.Opt(IDL.Nat),
   });
-  const Product = IDL.Record({ 'name' : IDL.Text, 'price' : IDL.Float64 });
+  const Product = IDL.Record({
+    'offer' : IDL.Opt(IDL.Text),
+    'name' : IDL.Text,
+    'price' : IDL.Float64,
+  });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
+  const ShopPaymentInfo = IDL.Record({
+    'network' : IDL.Text,
+    'phoneNumber' : IDL.Text,
+    'accountHolder' : IDL.Text,
+  });
   const ShopData = IDL.Record({
     'ownerName' : IDL.Text,
+    'payments' : IDL.Vec(ShopPaymentInfo),
     'businessName' : IDL.Text,
     'address' : IDL.Text,
     'phone' : IDL.Text,
@@ -164,7 +201,12 @@ export const idlFactory = ({ IDL }) => {
     'verified' : IDL.Null,
     'pending' : IDL.Null,
   });
+  const PaymentStatus = IDL.Variant({ 'paid' : IDL.Null, 'unpaid' : IDL.Null });
   const Time = IDL.Int;
+  const PaymentProof = IDL.Record({
+    'proofText' : IDL.Opt(IDL.Text),
+    'screenshotUrl' : IDL.Opt(IDL.Text),
+  });
   const OrderItem = IDL.Record({
     'productName' : IDL.Text,
     'quantity' : IDL.Nat,
@@ -173,9 +215,11 @@ export const idlFactory = ({ IDL }) => {
   const Order = IDL.Record({
     'customerName' : IDL.Text,
     'status' : OrderStatus,
+    'paymentStatus' : PaymentStatus,
     'customerPhone' : IDL.Text,
     'createdAt' : Time,
     'deliveryTime' : IDL.Text,
+    'paymentProof' : IDL.Opt(PaymentProof),
     'customerAddress' : IDL.Text,
     'items' : IDL.Vec(OrderItem),
     'totalPrice' : IDL.Float64,
@@ -221,6 +265,7 @@ export const idlFactory = ({ IDL }) => {
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'addProduct' : IDL.Func([Product], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'deleteMyShop' : IDL.Func([], [], []),
     'deleteProduct' : IDL.Func([IDL.Text], [], []),
     'getAllShops' : IDL.Func(
         [],
@@ -229,6 +274,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getCustomerOrders' : IDL.Func([IDL.Text], [IDL.Vec(Order)], ['query']),
     'getOrdersForShop' : IDL.Func([], [IDL.Vec(Order)], ['query']),
     'getProductsForShop' : IDL.Func(
         [IDL.Principal],
@@ -255,6 +301,11 @@ export const idlFactory = ({ IDL }) => {
     'registerShop' : IDL.Func([ShopData], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'setShopLocation' : IDL.Func([IDL.Float64, IDL.Float64], [], []),
+    'submitPaymentProof' : IDL.Func(
+        [IDL.Principal, IDL.Nat, IDL.Text, IDL.Text],
+        [],
+        [],
+      ),
     'updateProduct' : IDL.Func([Product], [], []),
     'updateShop' : IDL.Func([ShopData], [], []),
     'updateShopSocials' : IDL.Func([ShopSocials], [], []),

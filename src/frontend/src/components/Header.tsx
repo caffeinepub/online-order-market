@@ -1,15 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import {
-  Loader2,
-  LogIn,
-  LogOut,
-  Moon,
-  ShoppingBag,
-  Store,
-  Sun,
-} from "lucide-react";
+import { Loader2, LogIn, LogOut, ShoppingBag, Store } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useTheme } from "../hooks/useTheme";
@@ -19,7 +11,7 @@ export default function Header() {
   const queryClient = useQueryClient();
   const isAuthenticated = !!identity;
   const { lang, setLang, t } = useLanguage();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, cycleTheme } = useTheme();
 
   const handleAuth = async () => {
     if (isAuthenticated) {
@@ -29,6 +21,16 @@ export default function Header() {
       login();
     }
   };
+
+  const themeConfig: Record<
+    string,
+    { label: string; emoji: string; bg: string }
+  > = {
+    blue: { label: "Bluu", emoji: "🔵", bg: "#1d4ed8" },
+    dark: { label: "Giza", emoji: "⚫", bg: "#1f2937" },
+    gold: { label: "Dhahabu", emoji: "🟡", bg: "#b45309" },
+  };
+  const current = themeConfig[theme];
 
   return (
     <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b-2 border-border shadow-sm">
@@ -45,7 +47,7 @@ export default function Header() {
               alt="Online Order Market"
               className="h-9 w-9 object-contain"
             />
-            <span className="font-display text-xl font-bold text-foreground tracking-tight">
+            <span className="font-display text-xl font-bold text-foreground tracking-tight hidden sm:inline">
               Online Order Market
             </span>
           </Link>
@@ -53,7 +55,7 @@ export default function Header() {
           {/* Nav */}
           <nav className="flex items-center gap-2">
             {/* Language switcher */}
-            <div className="flex items-center gap-1 mr-2">
+            <div className="flex items-center gap-1 mr-1">
               <button
                 type="button"
                 onClick={() => setLang("en")}
@@ -80,25 +82,25 @@ export default function Header() {
               </button>
             </div>
 
-            {/* Theme toggle */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTheme}
-              className="text-muted-foreground hover:text-foreground"
+            {/* Prominent theme cycle button */}
+            <button
+              type="button"
+              onClick={cycleTheme}
+              title="Badilisha Rangi (Change Theme)"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-border bg-muted hover:bg-accent hover:border-primary transition-all font-bold text-xs"
               data-ocid="nav.toggle"
-              aria-label={
-                theme === "dark"
-                  ? "Switch to light mode"
-                  : "Switch to dark mode"
-              }
             >
-              {theme === "dark" ? (
-                <Sun className="h-4 w-4" />
-              ) : (
-                <Moon className="h-4 w-4" />
-              )}
-            </Button>
+              <span
+                className="inline-block w-4 h-4 rounded-full border border-white/30 shadow-sm flex-shrink-0"
+                style={{ backgroundColor: current.bg }}
+              />
+              <span className="text-foreground hidden sm:inline">
+                {current.label}
+              </span>
+              <span className="text-muted-foreground text-[10px] hidden md:inline">
+                ▼
+              </span>
+            </button>
 
             <Link to="/" data-ocid="nav.link">
               <Button
@@ -127,7 +129,7 @@ export default function Header() {
                   variant="outline"
                   size="sm"
                   onClick={handleAuth}
-                  className="gap-2 border-2 font-bold"
+                  className="gap-2 border-2 font-bold btn-bold"
                   data-ocid="nav.button"
                 >
                   <LogOut className="h-4 w-4" />
@@ -139,7 +141,7 @@ export default function Header() {
                 size="sm"
                 onClick={handleAuth}
                 disabled={isLoggingIn}
-                className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold"
+                className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold btn-bold"
                 data-ocid="nav.button"
               >
                 {isLoggingIn ? (

@@ -13,9 +13,11 @@ import type { Principal } from '@icp-sdk/core/principal';
 export interface Order {
   'customerName' : string,
   'status' : OrderStatus,
+  'paymentStatus' : PaymentStatus,
   'customerPhone' : string,
   'createdAt' : Time,
   'deliveryTime' : string,
+  'paymentProof' : [] | [PaymentProof],
   'customerAddress' : string,
   'items' : Array<OrderItem>,
   'totalPrice' : number,
@@ -27,14 +29,30 @@ export interface OrderItem {
 }
 export type OrderStatus = { 'verified' : null } |
   { 'pending' : null };
-export interface Product { 'name' : string, 'price' : number }
+export interface PaymentProof {
+  'proofText' : [] | [string],
+  'screenshotUrl' : [] | [string],
+}
+export type PaymentStatus = { 'paid' : null } |
+  { 'unpaid' : null };
+export interface Product {
+  'offer' : [] | [string],
+  'name' : string,
+  'price' : number,
+}
 export interface ShopData {
   'ownerName' : string,
+  'payments' : Array<ShopPaymentInfo>,
   'businessName' : string,
   'address' : string,
   'phone' : string,
 }
 export interface ShopLocation { 'latitude' : number, 'longitude' : number }
+export interface ShopPaymentInfo {
+  'network' : string,
+  'phoneNumber' : string,
+  'accountHolder' : string,
+}
 export interface ShopSocials {
   'tiktok' : string,
   'instagram' : string,
@@ -76,10 +94,12 @@ export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addProduct' : ActorMethod<[Product], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'deleteMyShop' : ActorMethod<[], undefined>,
   'deleteProduct' : ActorMethod<[string], undefined>,
   'getAllShops' : ActorMethod<[], Array<[Principal, ShopData]>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getCustomerOrders' : ActorMethod<[string], Array<Order>>,
   'getOrdersForShop' : ActorMethod<[], Array<Order>>,
   'getProductsForShop' : ActorMethod<[Principal], Array<Product>>,
   'getShopLocation' : ActorMethod<[Principal], [] | [ShopLocation]>,
@@ -90,6 +110,10 @@ export interface _SERVICE {
   'registerShop' : ActorMethod<[ShopData], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'setShopLocation' : ActorMethod<[number, number], undefined>,
+  'submitPaymentProof' : ActorMethod<
+    [Principal, bigint, string, string],
+    undefined
+  >,
   'updateProduct' : ActorMethod<[Product], undefined>,
   'updateShop' : ActorMethod<[ShopData], undefined>,
   'updateShopSocials' : ActorMethod<[ShopSocials], undefined>,

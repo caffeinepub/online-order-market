@@ -2,6 +2,7 @@ import type { Principal } from "@icp-sdk/core/principal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Order, Product, ShopData } from "../backend.d";
 import { useActor } from "./useActor";
+import { useInternetIdentity as useInternetIdentityHook } from "./useInternetIdentity";
 
 export function useGetAllShops() {
   const { actor, isFetching: actorFetching } = useActor();
@@ -12,18 +13,22 @@ export function useGetAllShops() {
       return actor.getAllShops();
     },
     enabled: !!actor && !actorFetching,
+    staleTime: 30_000,
   });
 }
 
 export function useGetProductsForShop(shopOwner: Principal | null) {
-  const { actor, isFetching: actorFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<Product[]>({
     queryKey: ["products", shopOwner?.toString()],
     queryFn: async () => {
       if (!actor || !shopOwner) return [];
       return actor.getProductsForShop(shopOwner);
     },
-    enabled: !!actor && !actorFetching && !!shopOwner,
+    enabled: !!actor && !!shopOwner,
+    retry: 3,
+    staleTime: 0,
+    refetchOnMount: true,
   });
 }
 
@@ -53,6 +58,7 @@ export function useGetOrdersForShop() {
       return actor.getOrdersForShop();
     },
     enabled: !!actor && !actorFetching,
+    refetchInterval: 15_000,
   });
 }
 
@@ -116,6 +122,7 @@ export function useAddProduct() {
     retry: 2,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["productPhotos"] });
     },
   });
 }
@@ -132,6 +139,7 @@ export function useUpdateProduct() {
     retry: 2,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["productPhotos"] });
     },
   });
 }
@@ -164,8 +172,6 @@ export function useGetMyProducts() {
   });
 }
 
-import { useInternetIdentity as useInternetIdentityHook } from "./useInternetIdentity";
-
 export function useGetCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
   const query = useQuery({
@@ -195,5 +201,78 @@ export function useSaveUserProfile() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["currentUserProfile"] });
     },
+  });
+}
+
+export function useDeleteMyShop() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      if (!actor) throw new Error("Not connected");
+      return actor.deleteMyShop();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["allShops"] });
+      queryClient.invalidateQueries({ queryKey: ["myShop"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+  });
+}
+
+export function useGetCustomerOrders(phone: string) {
+  const { actor, isFetching: actorFetching } = useActor();
+  return useQuery<Order[]>({
+    queryKey: ["customerOrders", phone],
+    queryFn: async () => {
+      if (!actor || !phone) return [];
+      return actor.getCustomerOrders(phone);
+    },
+    enabled: !!actor && !actorFetching && phone.length === 10,
+  });
+}
+
+export function useSubmitPaymentProof() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      shopOwner,
+      orderIndex,
+      proofText,
+      screenshotUrl,
+    }: {
+      shopOwner: Principal;
+      orderIndex: bigint;
+      proofText: string;
+      screenshotUrl: string;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.submitPaymentProof(
+        shopOwner,
+        orderIndex,
+        proofText,
+        screenshotUrl,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["customerOrders"] });
+    },
+  });
+}
+
+export function useGetProductPhotos(shopOwner: Principal | null) {
+  const { actor } = useActor();
+  return useQuery<Array<[string, string]>>({
+    queryKey: ["productPhotos", shopOwner?.toString()],
+    queryFn: async () => {
+      if (!actor || !shopOwner) return [];
+      return (actor as any).getProductPhotos(shopOwner);
+    },
+    enabled: !!actor && !!shopOwner,
+    retry: 3,
+    staleTime: 0,
+    refetchOnMount: true,
   });
 }

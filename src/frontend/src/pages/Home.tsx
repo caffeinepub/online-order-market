@@ -14,12 +14,14 @@ import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
   BookOpen,
+  CheckCircle2,
   Loader2,
   MapPin,
   Navigation,
   Phone,
   Search,
   Store,
+  Tag,
   User,
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -33,7 +35,51 @@ import { useGetAllShops } from "../hooks/useQueries";
 import { useShopLocation, useUserLocation } from "../hooks/useShopLocation";
 import { useShopPhoto } from "../hooks/useShopPhoto";
 import { useShopSocials } from "../hooks/useShopSocials";
+import { type Theme, useTheme } from "../hooks/useTheme";
 import { calcDistanceKm, formatDistance } from "../utils/distance";
+
+const THEME_OPTIONS: {
+  key: Theme;
+  label: string;
+  color: string;
+  ring: string;
+}[] = [
+  { key: "blue", label: "Bluu", color: "#1d4ed8", ring: "ring-blue-600" },
+  { key: "dark", label: "Giza", color: "#1f2937", ring: "ring-gray-800" },
+  { key: "gold", label: "Dhahabu", color: "#b45309", ring: "ring-amber-700" },
+];
+
+function ThemePicker() {
+  const { theme, setTheme } = useTheme();
+  return (
+    <div className="flex items-center gap-3" data-ocid="theme.panel">
+      <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">
+        🎨 Chagua Rangi:
+      </span>
+      <div className="flex items-center gap-2">
+        {THEME_OPTIONS.map((opt) => (
+          <button
+            key={opt.key}
+            type="button"
+            onClick={() => setTheme(opt.key)}
+            title={opt.label}
+            className={`relative w-9 h-9 rounded-full border-2 transition-all shadow-md hover:scale-110 ${
+              theme === opt.key
+                ? `border-foreground scale-110 ring-2 ring-offset-2 ring-offset-background ${opt.ring}`
+                : "border-border/50 hover:border-foreground/60"
+            }`}
+            style={{ backgroundColor: opt.color }}
+            data-ocid={`theme.${opt.key}.toggle`}
+          >
+            {theme === opt.key && (
+              <CheckCircle2 className="absolute inset-0 m-auto h-4 w-4 text-white drop-shadow" />
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function DistanceBadge({
   principalId,
@@ -53,9 +99,9 @@ function DistanceBadge({
     shopLoc.longitude,
   );
   return (
-    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold border border-blue-200">
-      <MapPin className="h-3 w-3" />
-      {formatDistance(km)} away
+    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 font-extrabold text-sm border-2 border-blue-300 shadow-sm">
+      <MapPin className="h-4 w-4 text-blue-600 flex-shrink-0" />
+      <span className="text-base font-extrabold">{formatDistance(km)}</span>
     </div>
   );
 }
@@ -66,12 +112,14 @@ function ShopCard({
   index,
   userLat,
   userLng,
+  matchedProducts,
 }: {
   principal: Principal;
   shop: ShopData;
   index: number;
   userLat?: number;
   userLng?: number;
+  matchedProducts?: string[];
 }) {
   const { t } = useLanguage();
   const photoUrl = useShopPhoto(principal.toString());
@@ -92,9 +140,9 @@ function ShopCard({
       data-ocid={`shops.item.${index + 1}`}
     >
       <Card className="h-full flex flex-col hover:shadow-xl transition-all duration-200 border-2 border-border overflow-hidden">
-        {/* Banner / Photo area */}
-        {photoUrl && !photoError ? (
-          <div className="h-36 overflow-hidden bg-muted">
+        {/* Square Profile Photo */}
+        <div className="w-full aspect-square overflow-hidden bg-muted">
+          {photoUrl && !photoError ? (
             <img
               src={photoUrl}
               alt={shop.businessName}
@@ -102,17 +150,17 @@ function ShopCard({
               loading="lazy"
               onError={() => setPhotoError(true)}
             />
-          </div>
-        ) : (
-          <div className="h-36 bg-gradient-to-br from-primary/20 via-primary/10 to-accent/20 flex items-center justify-center border-b-2 border-border">
-            <Store className="h-12 w-12 text-primary/40" />
-          </div>
-        )}
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-accent/20 flex items-center justify-center">
+              <Store className="h-16 w-16 text-primary/40" />
+            </div>
+          )}
+        </div>
 
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-2 pt-3">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <CardTitle className="font-display font-extrabold text-xl leading-tight">
+              <CardTitle className="font-display font-extrabold text-lg leading-tight">
                 {shop.businessName}
               </CardTitle>
               <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5 font-medium">
@@ -128,7 +176,7 @@ function ShopCard({
             )}
           </div>
         </CardHeader>
-        <CardContent className="flex-1 space-y-2 pb-4">
+        <CardContent className="flex-1 space-y-1.5 pb-3">
           <div className="flex items-start gap-2 text-sm text-muted-foreground">
             <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-primary/60" />
             <span className="line-clamp-2 font-medium">{shop.address}</span>
@@ -137,6 +185,25 @@ function ShopCard({
             <Phone className="h-4 w-4 flex-shrink-0 text-primary/60" />
             <span className="font-medium">{shop.phone}</span>
           </div>
+          {matchedProducts && matchedProducts.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {matchedProducts.slice(0, 3).map((p) => (
+                <Badge
+                  key={p}
+                  variant="secondary"
+                  className="text-xs font-bold"
+                >
+                  <Tag className="h-2.5 w-2.5 mr-1" />
+                  {p}
+                </Badge>
+              ))}
+              {matchedProducts.length > 3 && (
+                <Badge variant="secondary" className="text-xs font-bold">
+                  +{matchedProducts.length - 3} more
+                </Badge>
+              )}
+            </div>
+          )}
         </CardContent>
         {hasSocials && (
           <div className="px-4 pb-3 flex flex-wrap items-center gap-2">
@@ -150,7 +217,7 @@ function ShopCard({
               >
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold text-white shadow hover:opacity-90 transition-opacity"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold text-white shadow hover:opacity-90 transition-opacity btn-bold"
                   style={{ backgroundColor: "#1877F2" }}
                 >
                   <FaFacebook className="h-3 w-3" />
@@ -168,7 +235,7 @@ function ShopCard({
               >
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold text-white shadow hover:opacity-90 transition-opacity bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold text-white shadow hover:opacity-90 transition-opacity bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 btn-bold"
                 >
                   <FaInstagram className="h-3 w-3" />
                   Instagram
@@ -185,7 +252,7 @@ function ShopCard({
               >
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold text-white shadow hover:opacity-90 transition-opacity"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold text-white shadow hover:opacity-90 transition-opacity btn-bold"
                   style={{ backgroundColor: "#010101" }}
                 >
                   <FaTiktok className="h-3 w-3" />
@@ -202,7 +269,7 @@ function ShopCard({
             className="w-full"
           >
             <Button
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 gap-2 font-bold shadow-sm"
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 gap-2 font-bold shadow-md btn-bold py-3"
               data-ocid={`shops.item.${index + 1}.primary_button`}
             >
               {t("viewProductsOrder")} <ArrowRight className="h-4 w-4" />
@@ -272,14 +339,25 @@ export default function Home() {
                   {t("businessesNearYou")}
                 </span>
               </h1>
-              <p className="text-lg text-muted-foreground leading-relaxed mb-8">
+              <p className="text-lg text-muted-foreground leading-relaxed mb-6">
                 {t("heroSubtitle")}
               </p>
+
+              {/* Theme Picker — visible below hero text */}
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.4 }}
+                className="mb-6 inline-flex items-center gap-3 bg-card/80 backdrop-blur-sm border-2 border-border rounded-xl px-4 py-2.5 shadow-sm"
+              >
+                <ThemePicker />
+              </motion.div>
+
               <div className="flex flex-wrap gap-3">
                 <a href="#shops">
                   <Button
                     size="lg"
-                    className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 font-bold shadow-md"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 font-bold shadow-md btn-bold py-3 px-6"
                     data-ocid="hero.primary_button"
                   >
                     {t("browseShops")} <ArrowRight className="h-4 w-4" />
@@ -289,7 +367,7 @@ export default function Home() {
                   <Button
                     size="lg"
                     variant="outline"
-                    className="gap-2 border-2 border-primary/40 text-primary hover:bg-primary/5 font-bold"
+                    className="gap-2 border-2 border-primary/40 text-primary hover:bg-primary/5 font-bold btn-bold py-3 px-6"
                     data-ocid="hero.secondary_button"
                   >
                     <Store className="h-4 w-4" /> {t("registerYourShop")}
@@ -329,31 +407,33 @@ export default function Home() {
                     data-ocid="shops.search_input"
                   />
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant={userLocation ? "default" : "outline"}
-                    className={`gap-2 font-bold border-2 ${
-                      userLocation
-                        ? "bg-primary text-primary-foreground"
-                        : "border-primary/40 text-primary hover:bg-primary/5"
-                    }`}
-                    onClick={requestLocation}
-                    disabled={locLoading}
-                    data-ocid="shops.location.button"
-                  >
-                    {locLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Navigation className="h-4 w-4" />
-                    )}
-                    {userLocation
-                      ? t("nearbyShopsActive")
-                      : t("findNearbyShops")}
-                  </Button>
+                <div className="flex gap-2 flex-wrap">
+                  {/* Location status / button */}
+                  {userLocation ? (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-green-400 bg-green-50 text-green-800 font-bold text-sm">
+                      <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
+                      Eneo limewashwa
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="gap-2 font-bold border-2 border-primary/40 text-primary hover:bg-primary/5 btn-bold"
+                      onClick={requestLocation}
+                      disabled={locLoading}
+                      data-ocid="shops.location.button"
+                    >
+                      {locLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Navigation className="h-4 w-4" />
+                      )}
+                      {locLoading ? "Inatafuta..." : "Washa Eneo Lako"}
+                    </Button>
+                  )}
                   {userLocation && (
                     <Button
                       variant={sortByDist ? "default" : "outline"}
-                      className={`gap-2 font-bold border-2 ${
+                      className={`gap-2 font-bold border-2 btn-bold ${
                         sortByDist
                           ? "bg-primary text-primary-foreground"
                           : "border-primary/40 text-primary hover:bg-primary/5"
@@ -381,7 +461,7 @@ export default function Home() {
               >
                 {Array.from({ length: 6 }, (_, i) => i).map((i) => (
                   <Card key={i} className="overflow-hidden border-2">
-                    <Skeleton className="h-36 w-full" />
+                    <Skeleton className="aspect-square w-full" />
                     <CardHeader>
                       <Skeleton className="h-6 w-3/4" />
                       <Skeleton className="h-4 w-1/2" />
@@ -391,7 +471,7 @@ export default function Home() {
                       <Skeleton className="h-4 w-2/3" />
                     </CardContent>
                     <CardFooter>
-                      <Skeleton className="h-9 w-full" />
+                      <Skeleton className="h-10 w-full" />
                     </CardFooter>
                   </Card>
                 ))}
@@ -415,7 +495,7 @@ export default function Home() {
                 {!searchQuery && (
                   <Link to="/owner/login">
                     <Button
-                      className="bg-primary text-primary-foreground font-bold"
+                      className="bg-primary text-primary-foreground font-bold btn-bold"
                       data-ocid="shops.primary_button"
                     >
                       {t("registerYourShop")}
@@ -444,7 +524,7 @@ export default function Home() {
             <Link to="/owner/login">
               <Button
                 variant="outline"
-                className="border-2 border-primary text-primary hover:bg-primary/5 font-bold"
+                className="border-2 border-primary text-primary hover:bg-primary/5 font-bold btn-bold py-3 px-6"
                 data-ocid="cta.secondary_button"
               >
                 {t("registerYourShop")} <ArrowRight className="h-4 w-4 ml-2" />

@@ -7,7 +7,7 @@ export async function convertToJpeg(
   file: File,
   quality = 0.85,
   maxWidth = 1200,
-  maxHeight = 1200,
+  _maxHeight = 1200,
 ): Promise<File> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -17,16 +17,18 @@ export async function convertToJpeg(
       URL.revokeObjectURL(objectUrl);
 
       let { width, height } = img;
-      // Scale down if too large
-      if (width > maxWidth || height > maxHeight) {
-        const ratio = Math.min(maxWidth / width, maxHeight / height);
-        width = Math.round(width * ratio);
-        height = Math.round(height * ratio);
-      }
+
+      // Center-crop to square (smallest dimension)
+      const minDim = Math.min(width, height);
+      const cropX = Math.floor((width - minDim) / 2);
+      const cropY = Math.floor((height - minDim) / 2);
+
+      // Scale down to maxWidth/maxHeight (both are the same for square)
+      const targetSize = Math.min(minDim, maxWidth);
 
       const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
+      canvas.width = targetSize;
+      canvas.height = targetSize;
       const ctx = canvas.getContext("2d");
       if (!ctx) {
         resolve(file); // fallback
@@ -34,8 +36,18 @@ export async function convertToJpeg(
       }
       // White background for transparency handling
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, width, height);
-      ctx.drawImage(img, 0, 0, width, height);
+      ctx.fillRect(0, 0, targetSize, targetSize);
+      ctx.drawImage(
+        img,
+        cropX,
+        cropY,
+        minDim,
+        minDim,
+        0,
+        0,
+        targetSize,
+        targetSize,
+      );
 
       canvas.toBlob(
         (blob) => {
